@@ -1,0 +1,4 @@
+# file: /Users/weike/Documents/GitHub/trader_on_solana/market_data_layer/cache.py
+# hypothesis_version: 6.151.3
+
+[1000, 'default_ttl', 'max_size', 'size']

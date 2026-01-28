@@ -1,0 +1,4 @@
+# file: /Users/weike/Documents/GitHub/trader_on_solana/market_data_layer/validator.py
+# hypothesis_version: 6.151.3
+
+[0.0, 1000000.0, 9999999999999, 'close', 'high', 'low', 'open', 'volume must be >= 0']
