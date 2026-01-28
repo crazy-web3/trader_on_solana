@@ -24,7 +24,14 @@ import logging
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["*"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"],
+        "supports_credentials": True
+    }
+})
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -278,10 +285,6 @@ def backtest_strategy():
         return jsonify({"error": "Backtest failed"}), 500
 
 
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5001)
-
-
 @app.route("/api/backtest/run", methods=["POST"])
 def run_backtest():
     """Run a comprehensive backtest with historical data.
@@ -420,3 +423,7 @@ def grid_search_backtest():
     except Exception as e:
         logger.error(f"Grid search error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5001)

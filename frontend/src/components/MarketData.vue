@@ -123,12 +123,24 @@ export default {
         const response = await fetch(
           `/api/klines?symbol=${symbol.value}&interval=${interval.value}&days=${days.value}`
         )
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
         const data = await response.json()
-        klines.value = data.data
-        calculateStats()
-        updateChart()
-        message.value = { type: 'success', text: `✅ 成功加载 ${data.count} 条数据` }
+        
+        // Handle both response formats
+        const klinesData = data.data || data
+        klines.value = Array.isArray(klinesData) ? klinesData : (data.data || [])
+        
+        if (klines.value.length === 0) {
+          message.value = { type: 'error', text: '❌ 没有获取到数据' }
+        } else {
+          calculateStats()
+          updateChart()
+          message.value = { type: 'success', text: `✅ 成功加载 ${klines.value.length} 条数据` }
+        }
       } catch (error) {
+        console.error('Fetch error:', error)
         message.value = { type: 'error', text: `❌ 错误: ${error.message}` }
       } finally {
         loading.value = false
@@ -154,32 +166,43 @@ export default {
     const updateChart = () => {
       if (!chartContainer.value || klines.value.length === 0) return
 
-      chartContainer.value.innerHTML = '<div id="tv-chart" style="width: 100%; height: 400px;"></div>'
+      try {
+        chartContainer.value.innerHTML = '<div id="tv-chart" style="width: 100%; height: 400px;"></div>'
 
-      const chartDiv = document.getElementById('tv-chart')
-      const tvChart = LightweightCharts.createChart(chartDiv, {
-        layout: { textColor: '#cbd5e1', background: { color: '#1e293b' } },
-        timeScale: { timeVisible: true, secondsVisible: false }
-      })
+        const chartDiv = document.getElementById('tv-chart')
+        
+        // Check if LightweightCharts is available
+        if (typeof LightweightCharts === 'undefined') {
+          console.warn('LightweightCharts not loaded, skipping chart')
+          return
+        }
+        
+        const tvChart = LightweightCharts.createChart(chartDiv, {
+          layout: { textColor: '#cbd5e1', background: { color: '#1e293b' } },
+          timeScale: { timeVisible: true, secondsVisible: false }
+        })
 
-      const candlestickSeries = tvChart.addCandlestickSeries({
-        upColor: '#10b981',
-        downColor: '#ef4444',
-        borderUpColor: '#10b981',
-        borderDownColor: '#ef4444'
-      })
+        const candlestickSeries = tvChart.addCandlestickSeries({
+          upColor: '#10b981',
+          downColor: '#ef4444',
+          borderUpColor: '#10b981',
+          borderDownColor: '#ef4444'
+        })
 
-      const candleData = klines.value.map(k => ({
-        time: Math.floor(k.timestamp / 1000),
-        open: k.open,
-        high: k.high,
-        low: k.low,
-        close: k.close
-      }))
+        const candleData = klines.value.map(k => ({
+          time: Math.floor(k.timestamp / 1000),
+          open: k.open,
+          high: k.high,
+          low: k.low,
+          close: k.close
+        }))
 
-      candlestickSeries.setData(candleData)
-      tvChart.timeScale().fitContent()
-      chart = tvChart
+        candlestickSeries.setData(candleData)
+        tvChart.timeScale().fitContent()
+        chart = tvChart
+      } catch (error) {
+        console.error('Chart error:', error)
+      }
     }
 
     const clearCache = async () => {

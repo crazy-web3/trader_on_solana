@@ -215,10 +215,17 @@ export default {
             metric: metric.value
           })
         })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || '优化失败')
+        }
+        
         const data = await response.json()
         result.value = data
         message.value = { type: 'success', text: `✅ 优化完成，共测试 ${data.all_results.length} 个组合` }
       } catch (error) {
+        console.error('Optimize error:', error)
         message.value = { type: 'error', text: `❌ 错误: ${error.message}` }
       } finally {
         loading.value = false

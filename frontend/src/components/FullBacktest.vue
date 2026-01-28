@@ -177,11 +177,18 @@ export default {
             end_date: endDate.value
           })
         })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || '回测失败')
+        }
+        
         const data = await response.json()
         result.value = data
         updateChart()
         message.value = { type: 'success', text: '✅ 回测完成' }
       } catch (error) {
+        console.error('Backtest error:', error)
         message.value = { type: 'error', text: `❌ 错误: ${error.message}` }
       } finally {
         loading.value = false
