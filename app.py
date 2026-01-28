@@ -15,6 +15,11 @@ from strategy_engine import (
     StrategyConfig,
     StrategyMode,
 )
+from backtest_engine import (
+    BacktestEngine,
+    GridSearchOptimizer,
+    BacktestConfig,
+)
 import logging
 from datetime import datetime, timedelta
 
@@ -275,3 +280,143 @@ def backtest_strategy():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)
+
+
+@app.route("/api/backtest/run", methods=["POST"])
+def run_backtest():
+    """Run a comprehensive backtest with historical data.
+    
+    Request body:
+    {
+        "symbol": "BTC/USDT",
+        "mode": "long",
+        "lower_price": 40000,
+        "upper_price": 60000,
+        "grid_count": 10,
+        "initial_capital": 10000,
+        "start_date": "2025-01-28",
+        "end_date": "2026-01-28"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        required_fields = ["symbol", "mode", "lower_price", "upper_price",
+                          "grid_count", "initial_capital", "start_date", "end_date"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Parse parameters
+        symbol = data["symbol"]
+        mode = StrategyMode(data["mode"])
+        lower_price = float(data["lower_price"])
+        upper_price = float(data["upper_price"])
+        grid_count = int(data["grid_count"])
+        initial_capital = float(data["initial_capital"])
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        
+        # Create backtest config
+        config = BacktestConfig(
+            symbol=symbol,
+            mode=mode,
+            lower_price=lower_price,
+            upper_price=upper_price,
+            grid_count=grid_count,
+            initial_capital=initial_capital,
+            start_date=start_date,
+            end_date=end_date,
+            fee_rate=0.0005,
+        )
+        
+        # Run backtest
+        logger.info(f"Running backtest for {symbol} from {start_date} to {end_date}")
+        backtest_engine = BacktestEngine(adapter)
+        result = backtest_engine.run_backtest(config)
+        
+        # Return result
+        return jsonify(result.to_dict())
+    
+    except ValueError as e:
+        logger.error(f"Invalid parameter: {e}")
+        return jsonify({"error": f"Invalid parameter: {str(e)}"}), 400
+    except Exception as e:
+        logger.error(f"Backtest error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/backtest/grid-search", methods=["POST"])
+def grid_search_backtest():
+    """Run grid search optimization.
+    
+    Request body:
+    {
+        "symbol": "BTC/USDT",
+        "mode": "long",
+        "lower_price": 40000,
+        "upper_price": 60000,
+        "grid_count": 10,
+        "initial_capital": 10000,
+        "start_date": "2025-01-28",
+        "end_date": "2026-01-28",
+        "parameter_ranges": {
+            "grid_count": [5, 10, 15, 20],
+            "lower_price": [38000, 40000, 42000],
+            "upper_price": [58000, 60000, 62000]
+        },
+        "metric": "total_return"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        required_fields = ["symbol", "mode", "lower_price", "upper_price",
+                          "grid_count", "initial_capital", "start_date", "end_date",
+                          "parameter_ranges"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Parse parameters
+        symbol = data["symbol"]
+        mode = StrategyMode(data["mode"])
+        lower_price = float(data["lower_price"])
+        upper_price = float(data["upper_price"])
+        grid_count = int(data["grid_count"])
+        initial_capital = float(data["initial_capital"])
+        start_date = data["start_date"]
+        end_date = data["end_date"]
+        parameter_ranges = data["parameter_ranges"]
+        metric = data.get("metric", "total_return")
+        
+        # Create base config
+        base_config = BacktestConfig(
+            symbol=symbol,
+            mode=mode,
+            lower_price=lower_price,
+            upper_price=upper_price,
+            grid_count=grid_count,
+            initial_capital=initial_capital,
+            start_date=start_date,
+            end_date=end_date,
+            fee_rate=0.0005,
+        )
+        
+        # Run grid search
+        logger.info(f"Running grid search for {symbol}")
+        backtest_engine = BacktestEngine(adapter)
+        optimizer = GridSearchOptimizer(backtest_engine)
+        result = optimizer.optimize(base_config, parameter_ranges, metric)
+        
+        # Return result
+        return jsonify(result.to_dict())
+    
+    except ValueError as e:
+        logger.error(f"Invalid parameter: {e}")
+        return jsonify({"error": f"Invalid parameter: {str(e)}"}), 400
+    except Exception as e:
+        logger.error(f"Grid search error: {e}")
+        return jsonify({"error": str(e)}), 500
