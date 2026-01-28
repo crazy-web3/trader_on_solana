@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网格策略回测 - Grid Strategy Backtest</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .stat-value.positive {
+            color: #10b981;
+        }
+
+        .stat-value.negative {
+            color: #ef4444;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .success.active {
+            display: block;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .info-box strong {
+            color: #667eea;
+        }
+
+        .trade-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .trade-table thead {
+            background: #f8f9fa;
+        }
+
+        .trade-table th {
+            padding: 10px;
+            text-align: left;
+            color: #555;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .trade-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            color: #666;
+        }
+
+        .trade-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .trade-buy {
+            color: #10b981;
+        }
+
+        .trade-sell {
+            color: #ef4444;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 网格策略回测</h1>
+            <p>Grid Strategy Backtest - 网格交易策略回测分析</p>
+        </div>
+
+        <div class="main-content">
+            <!-- 参数配置 -->
+            <div class="card">
+                <h2>⚙️ 回测参数</h2>
+                
+                <div class="info-box">
+                    <strong>💡 提示：</strong> 配置策略参数进行回测，查看历史表现
+                </div>
+
+                <div class="form-group">
+                    <label for="symbol">币种 (Symbol)</label>
+                    <select id="symbol">
+                        <option value="BTC/USDT">BTC/USDT - 比特币</option>
+                        <option value="ETH/USDT">ETH/USDT - 以太坊</option>
+                        <option value="BNB/USDT">BNB/USDT - 币安币</option>
+                        <option value="SOL/USDT">SOL/USDT - Solana</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="mode">策略模式 (Mode)</label>
+                    <select id="mode">
+                        <option value="long">做多 (Long) - 低买高卖</option>
+                        <option value="short">做空 (Short) - 高卖低买</option>
+                        <option value="neutral">中性 (Neutral) - 双向交易</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="lowerPrice">下限价格 (Lower Price)</label>
+                    <input type="number" id="lowerPrice" value="87000" step="100" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="upperPrice">上限价格 (Upper Price)</label>
+                    <input type="number" id="upperPrice" value="90000" step="100" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="gridCount">网格数量 (Grid Count)</label>
+                    <input type="number" id="gridCount" value="10" min="2" max="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="initialCapital">初始资金 (Initial Capital)</label>
+                    <input type="number" id="initialCapital" value="10000" step="100" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="days">回测天数 (Days)</label>
+                    <input type="number" id="days" value="7" min="1" max="365">
+                </div>
+
+                <button class="btn-primary" onclick="runBacktest()">🚀 开始回测</button>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>回测中...</p>
+                </div>
+
+                <div class="error" id="error"></div>
+                <div class="success" id="success"></div>
+            </div>
+
+            <!-- 回测结果 -->
+            <div class="card">
+                <h2>📈 回测结果</h2>
+                
+                <div id="resultStats" class="stats" style="display: none;">
+                    <div class="stat-item">
+                        <div class="stat-label">初始资金</div>
+                        <div class="stat-value" id="initialCapitalDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">最终资金</div>
+                        <div class="stat-value" id="finalCapitalDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">总收益率</div>
+                        <div class="stat-value" id="totalReturnDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">总交易数</div>
+                        <div class="stat-value" id="totalTradesDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">盈利交易</div>
+                        <div class="stat-value positive" id="winningTradesDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">亏损交易</div>
+                        <div class="stat-value negative" id="losingTradesDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">胜率</div>
+                        <div class="stat-value" id="winRateDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">最大回撤</div>
+                        <div class="stat-value negative" id="maxDrawdownDisplay">-</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; color: #999; padding: 40px;" id="noResult">
+                    暂无回测结果，请先运行回测
+                </div>
+            </div>
+
+            <!-- 权益曲线 -->
+            <div class="card full-width">
+                <h2>📊 权益曲线</h2>
+                <div class="chart-container">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 交易记录 -->
+            <div class="card full-width">
+                <h2>💰 交易记录</h2>
+                <div style="overflow-x: auto;">
+                    <table class="trade-table" id="tradeTable">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>方向</th>
+                                <th>价格</th>
+                                <th>数量</th>
+                                <th>手续费</th>
+                                <th>盈亏</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradeTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #999;">暂无交易记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5001/api';
+        let currentChart = null;
+        let currentResult = null;
+
+        function formatNumber(num) {
+            return parseFloat(num).toFixed(2);
+        }
+
+        function formatCurrency(num) {
+            return '$' + parseFloat(num).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function formatPercent(num) {
+            return (num * 100).toFixed(2) + '%';
+        }
+
+        function formatTimestamp(ms) {
+            const date = new Date(ms);
+            return date.toLocaleString('zh-CN');
+        }
+
+        async function runBacktest() {
+            const symbol = document.getElementById('symbol').value;
+            const mode = document.getElementById('mode').value;
+            const lowerPrice = parseFloat(document.getElementById('lowerPrice').value);
+            const upperPrice = parseFloat(document.getElementById('upperPrice').value);
+            const gridCount = parseInt(document.getElementById('gridCount').value);
+            const initialCapital = parseFloat(document.getElementById('initialCapital').value);
+            const days = parseInt(document.getElementById('days').value);
+
+            // Validate inputs
+            if (lowerPrice <= 0 || upperPrice <= 0) {
+                showError('价格必须大于0');
+                return;
+            }
+
+            if (lowerPrice >= upperPrice) {
+                showError('下限价格必须小于上限价格');
+                return;
+            }
+
+            if (gridCount < 2) {
+                showError('网格数量必须至少为2');
+                return;
+            }
+
+            if (initialCapital <= 0) {
+                showError('初始资金必须大于0');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+            hideSuccess();
+
+            try {
+                const response = await fetch(`${API_BASE}/strategy/backtest`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol,
+                        mode,
+                        lower_price: lowerPrice,
+                        upper_price: upperPrice,
+                        grid_count: gridCount,
+                        initial_capital: initialCapital,
+                        days,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || '回测失败');
+                }
+
+                const result = await response.json();
+                currentResult = result;
+
+                // Update results
+                updateResults(result);
+                updateChart(result);
+                updateTradeTable(result);
+
+                showSuccess('回测完成！');
+            } catch (error) {
+                showError(`错误: ${error.message}`);
+                console.error('Error:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function updateResults(result) {
+            document.getElementById('noResult').style.display = 'none';
+            document.getElementById('resultStats').style.display = 'grid';
+
+            document.getElementById('initialCapitalDisplay').textContent = 
+                formatCurrency(result.initial_capital);
+            document.getElementById('finalCapitalDisplay').textContent = 
+                formatCurrency(result.final_capital);
+            
+            const returnValue = result.total_return;
+            const returnDisplay = document.getElementById('totalReturnDisplay');
+            returnDisplay.textContent = formatPercent(returnValue);
+            returnDisplay.className = 'stat-value ' + (returnValue >= 0 ? 'positive' : 'negative');
+
+            document.getElementById('totalTradesDisplay').textContent = result.total_trades;
+            document.getElementById('winningTradesDisplay').textContent = result.winning_trades;
+            document.getElementById('losingTradesDisplay').textContent = result.losing_trades;
+            document.getElementById('winRateDisplay').textContent = formatPercent(result.win_rate);
+            
+            const drawdownDisplay = document.getElementById('maxDrawdownDisplay');
+            drawdownDisplay.textContent = formatPercent(result.max_drawdown_pct);
+            drawdownDisplay.className = 'stat-value negative';
+        }
+
+        function updateChart(result) {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            
+            const labels = result.timestamps.map(ts => {
+                const date = new Date(ts);
+                return date.toLocaleString('zh-CN', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            });
+
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '权益曲线',
+                            data: result.equity_curve,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: '权益 ($)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTradeTable(result) {
+            const tbody = document.getElementById('tradeTableBody');
+            tbody.innerHTML = '';
+
+            if (!result.trades || result.trades.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">暂无交易记录</td></tr>';
+                return;
+            }
+
+            result.trades.forEach(trade => {
+                const row = tbody.insertRow();
+                const timestamp = formatTimestamp(trade.timestamp);
+                const sideClass = trade.side === 'buy' ? 'trade-buy' : 'trade-sell';
+                const sideText = trade.side === 'buy' ? '买入' : '卖出';
+                
+                row.innerHTML = `
+                    <td>${timestamp}</td>
+                    <td class="${sideClass}">${sideText}</td>
+                    <td>${formatCurrency(trade.price)}</td>
+                    <td>${formatNumber(trade.quantity)}</td>
+                    <td>${formatCurrency(trade.fee)}</td>
+                    <td>${trade.side === 'sell' ? formatCurrency(trade.pnl) : '-'}</td>
+                `;
+            });
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('active', show);
+        }
+
+        function showError(message) {
+            const el = document.getElementById('error');
+            el.textContent = message;
+            el.classList.add('active');
+        }
+
+        function hideError() {
+            document.getElementById('error').classList.remove('active');
+        }
+
+        function showSuccess(message) {
+            const el = document.getElementById('success');
+            el.textContent = message;
+            el.classList.add('active');
+            setTimeout(() => el.classList.remove('active'), 3000);
+        }
+
+        function hideSuccess() {
+            document.getElementById('success').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

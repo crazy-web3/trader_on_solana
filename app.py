@@ -10,6 +10,11 @@ from market_data_layer.exceptions import (
     ValidationError,
     DataSourceError,
 )
+from strategy_engine import (
+    GridStrategyEngine,
+    StrategyConfig,
+    StrategyMode,
+)
 import logging
 from datetime import datetime, timedelta
 
@@ -162,6 +167,110 @@ def clear_cache():
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/strategy/backtest", methods=["POST"])
+def backtest_strategy():
+    """Backtest a grid strategy.
+    
+    Request body:
+    {
+        "symbol": "BTC/USDT",
+        "mode": "long",  # long, short, neutral
+        "lower_price": 48000,
+        "upper_price": 52000,
+        "grid_count": 10,
+        "initial_capital": 10000,
+        "days": 30
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required parameters
+        required_fields = ["symbol", "mode", "lower_price", "upper_price", 
+                          "grid_count", "initial_capital", "days"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Parse parameters
+        symbol = data["symbol"]
+        mode = StrategyMode(data["mode"])
+        lower_price = float(data["lower_price"])
+        upper_price = float(data["upper_price"])
+        grid_count = int(data["grid_count"])
+        initial_capital = float(data["initial_capital"])
+        days = int(data["days"])
+        
+        # Validate parameters
+        if lower_price <= 0 or upper_price <= 0:
+            return jsonify({"error": "Prices must be positive"}), 400
+        
+        if lower_price >= upper_price:
+            return jsonify({"error": "Lower price must be less than upper price"}), 400
+        
+        if grid_count < 2:
+            return jsonify({"error": "Grid count must be at least 2"}), 400
+        
+        if initial_capital <= 0:
+            return jsonify({"error": "Initial capital must be positive"}), 400
+        
+        if days < 1 or days > 365:
+            return jsonify({"error": "Days must be between 1 and 365"}), 400
+        
+        # Fetch K-line data
+        logger.info(f"Fetching K-line data for {symbol}")
+        end_time = int(datetime.now().timestamp() * 1000)
+        start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+        
+        klines = adapter.fetch_kline_data(symbol, "1h", start_time, end_time)
+        
+        if not klines:
+            return jsonify({"error": "No K-line data available"}), 404
+        
+        # Validate data
+        validation_results = validator.validate_batch(klines)
+        valid_klines = [
+            kline for kline, result in zip(klines, validation_results)
+            if result.isValid
+        ]
+        
+        if not valid_klines:
+            return jsonify({"error": "No valid K-line data"}), 400
+        
+        logger.info(f"Backtesting strategy with {len(valid_klines)} K-lines")
+        
+        # Create strategy config
+        config = StrategyConfig(
+            symbol=symbol,
+            mode=mode,
+            lower_price=lower_price,
+            upper_price=upper_price,
+            grid_count=grid_count,
+            initial_capital=initial_capital,
+            fee_rate=0.0005,
+        )
+        
+        # Execute strategy
+        engine = GridStrategyEngine(config)
+        result = engine.execute(valid_klines)
+        
+        # Return result
+        return jsonify(result.to_dict())
+    
+    except ValueError as e:
+        logger.error(f"Invalid parameter: {e}")
+        return jsonify({"error": f"Invalid parameter: {str(e)}"}), 400
+    except ParameterError as e:
+        logger.error(f"Parameter error: {e}")
+        return jsonify({"error": str(e)}), 400
+    except DataSourceError as e:
+        logger.error(f"Data source error: {e}")
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        logger.error(f"Backtest error: {e}")
+        return jsonify({"error": "Backtest failed"}), 500
 
 
 if __name__ == "__main__":
