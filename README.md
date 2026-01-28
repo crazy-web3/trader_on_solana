@@ -1,5 +1,51 @@
 # trader_on_solana
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- Node.js 16+
+- Virtual environment (venv)
+
+### Backend Setup & Run
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Install dependencies (if needed)
+pip install -r requirements.txt
+
+# Start backend server
+python3 app.py
+```
+Backend runs on: **http://localhost:5001**
+
+### Frontend Setup & Run
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies (if needed)
+npm install
+
+# Start frontend development server
+npm run dev
+```
+Frontend runs on: **http://localhost:3000**
+
+### Access the Application
+- **Frontend UI**: http://localhost:3000
+- **Backend API**: http://localhost:5001
+- **API Documentation**: Check endpoints in `app.py`
+
+### Available Features
+- 📊 **Market Data**: Real-time K-line data from Binance API
+- 📈 **Strategy Backtest**: Quick backtesting with configurable parameters
+- 🔍 **Full Backtest**: Historical backtesting up to 3 years
+- ⚙️ **Parameter Optimization**: Grid Search for optimal parameters
+
+---
+
 ## **一、项目背景**
 
 **赛道**：交易与策略机器人（Trading & Strategy Bots）
