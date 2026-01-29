@@ -53,7 +53,7 @@ class GridStrategyEngine:
         self.position_size = 0.0  # Net position size (positive for long, negative for short)
         self.total_fees = 0.0
         self.total_funding_fees = 0.0
-        self.equity_curve: List[float] = [config.initial_capital]
+        self.equity_curve: List[float] = []  # 不包含初始值，在处理第一个K线时添加
         self.timestamps: List[int] = []
         self.max_equity = config.initial_capital
         self.min_equity = config.initial_capital

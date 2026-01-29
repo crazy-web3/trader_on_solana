@@ -28,6 +28,7 @@ class StrategyConfig:
         leverage: Leverage multiplier (default 1x)
         funding_rate: Funding rate for perpetual contracts (default 0%)
         funding_interval: Funding interval in hours (default 8 hours)
+        entry_price: Entry price (earliest price in time series)
     """
     symbol: str
     mode: StrategyMode
@@ -39,6 +40,7 @@ class StrategyConfig:
     leverage: float = 1.0  # 1x leverage
     funding_rate: float = 0.0  # 0% funding rate
     funding_interval: int = 8  # 8 hours
+    entry_price: float = 0.0  # Entry price (earliest price in time series)
 
 
 @dataclass

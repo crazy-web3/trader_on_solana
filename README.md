@@ -9,14 +9,17 @@
 
 ### Backend Setup & Run
 ```bash
-# Activate virtual environment
+# Activate virtual environment (macOS/Linux)
 source venv/bin/activate
+
+# Or on Windows
+# venv\Scripts\activate
 
 # Install dependencies (if needed)
 pip install -r requirements.txt
 
 # Configure wallet whitelist (optional)
-python manage_whitelist.py add <wallet_address> --nickname "User Name" --role user
+python3 manage_whitelist.py add <wallet_address> --nickname "User Name" --role user
 
 # Start backend server
 python3 app.py
@@ -36,6 +39,35 @@ npm run dev
 ```
 Frontend runs on: **http://localhost:3000**
 
+### Quick Start (Development)
+For development, you can use the provided scripts:
+
+**macOS/Linux:**
+```bash
+# Make scripts executable
+chmod +x run.sh
+
+# Start both backend and frontend
+./run.sh
+```
+
+**Windows:**
+```bash
+# Start both backend and frontend
+run.bat
+```
+
+### Docker Deployment
+```bash
+# Build and start all services
+docker-compose up --build
+
+# Or run in background
+docker-compose up -d --build
+```
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5001
+
 ### Access the Application
 - **Frontend UI**: http://localhost:3000
 - **Backend API**: http://localhost:5001
@@ -48,12 +80,14 @@ Frontend runs on: **http://localhost:3000**
 3. Connect your wallet on the frontend to access trading features
 
 ### Available Features
-- 📊 **Market Data**: Real-time K-line data from Binance API
-- 📈 **Strategy Backtest**: Quick backtesting with configurable parameters
-- 🔍 **Full Backtest**: Historical backtesting up to 3 years
-- ⚙️ **Parameter Optimization**: Grid Search for optimal parameters
+- 📊 **Market Data**: Real-time K-line data from Binance API with interactive charts
+- 📈 **Strategy Backtest**: Quick backtesting with configurable parameters and leverage support
+- 🔍 **Full Backtest**: Historical backtesting up to 3 years with strategy comparison
+- ⚙️ **Parameter Optimization**: Grid Search for optimal parameters (requires wallet connection)
 - 🔐 **Wallet Authentication**: Solana wallet login with whitelist control
-- 💰 **Perpetual Contracts**: Support for leveraged trading with funding rates
+- 💰 **Perpetual Contracts**: Support for leveraged trading (1x-100x) with funding rates
+- 🎨 **Dark/Light Theme**: Toggle between dark and light themes with persistent settings
+- 📱 **Responsive Design**: Mobile-friendly interface with adaptive layouts
 
 ---
 

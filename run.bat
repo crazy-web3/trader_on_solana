@@ -1,26 +1,24 @@
 @echo off
-REM 启动脚本 - 运行后端API服务
+REM 启动脚本 - 运行完整的交易系统
 
 echo.
-echo 🚀 启动行情数据层 API 服务...
+echo 🚀 启动交易系统...
 echo.
 echo 📋 说明:
-echo   - 后端 API 运行在: http://localhost:5000
-echo   - 前端页面: 在浏览器中打开 index.html
+echo   - 后端 API 运行在: http://localhost:5001
+echo   - 前端界面运行在: http://localhost:3000
 echo.
 echo ⚙️  安装依赖 (如果需要):
 echo   pip install -r requirements.txt
+echo   cd frontend ^&^& npm install
 echo.
-echo 🔗 API 端点:
-echo   - GET  /api/health          - 健康检查
-echo   - GET  /api/symbols         - 获取支持的币种
-echo   - GET  /api/intervals       - 获取支持的时间周期
-echo   - GET  /api/klines          - 获取K线数据
-echo   - GET  /api/cache/stats     - 获取缓存统计
-echo   - POST /api/cache/clear     - 清空缓存
-echo.
-echo 📊 查询示例:
-echo   curl "http://localhost:5000/api/klines?symbol=BTC/USDT&interval=1h&days=7"
+echo 🔗 主要功能:
+echo   - 📊 行情数据 - 实时K线图表
+echo   - 📈 策略回测 - 网格策略回测
+echo   - 🔍 完整回测 - 多策略对比
+echo   - ⚡ 参数优化 - 需要钱包连接
+echo   - 🔐 钱包认证 - Solana钱包登录
+echo   - 🎨 深色主题 - 支持主题切换
 echo.
 echo 按 Ctrl+C 停止服务
 echo.
@@ -32,12 +30,39 @@ if not exist "venv" (
 )
 
 REM 激活虚拟环境
+echo 🔧 激活虚拟环境...
 call venv\Scripts\activate.bat
 
-REM 安装依赖
+REM 安装后端依赖
+echo 📦 安装后端依赖...
 pip install -q -r requirements.txt
 
-REM 运行Flask应用
-python app.py
+REM 检查前端依赖
+if not exist "frontend\node_modules" (
+    echo 📦 安装前端依赖...
+    cd frontend
+    call npm install
+    cd ..
+)
+
+REM 启动后端服务（后台运行）
+echo 🚀 启动后端服务...
+start /B python app.py
+
+REM 等待后端启动
+timeout /t 3 /nobreak >nul
+
+REM 启动前端服务
+echo 🚀 启动前端服务...
+cd frontend
+start /B npm run dev
+cd ..
+
+echo.
+echo ✅ 系统启动完成!
+echo    - 前端: http://localhost:3000
+echo    - 后端: http://localhost:5001
+echo.
+echo 按任意键退出...
 
 pause

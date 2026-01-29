@@ -108,13 +108,8 @@
           <input v-model.number="fundingRate" type="number" step="0.001" min="-1" max="1" placeholder="0.000">
         </div>
         <div class="form-group">
-          <label>资金费率周期 (小时)</label>
-          <select v-model.number="fundingInterval">
-            <option value="1">1小时</option>
-            <option value="4">4小时</option>
-            <option value="8">8小时</option>
-            <option value="24">24小时</option>
-          </select>
+          <label>建仓价格</label>
+          <input v-model.number="entryPrice" type="number" step="0.01" :disabled="autoCalculateRange">
         </div>
       </div>
       <div class="button-group">
@@ -180,8 +175,20 @@
 
     <!-- 权益曲线 -->
     <div class="card" v-if="result && result.equity_curve">
-      <h2>📈 权益曲线</h2>
-      <div class="chart-container" ref="equityChartContainer"></div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>📈 权益曲线</h2>
+        <div>
+          <button @click="forceUpdateChart" style="padding: 0.5rem 1rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-right: 0.5rem;">
+            强制刷新
+          </button>
+          <button @click="debugChart" style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+            调试图表
+          </button>
+        </div>
+      </div>
+      <div class="chart-container" ref="equityChartContainer">
+        <p style="text-align: center; color: #666; margin-top: 150px;">正在加载图表...</p>
+      </div>
     </div>
 
     <!-- 交易记录 -->
@@ -234,6 +241,7 @@ export default {
     const leverage = ref(1.0)
     const fundingRate = ref(0.0)
     const fundingInterval = ref(8)
+    const entryPrice = ref(0)  // 建仓价格
     const autoCalculateRange = ref(true)
     const priceRangePreview = ref(null)
     const loadingPreview = ref(false)
@@ -241,7 +249,10 @@ export default {
     const result = ref(null)
     const message = ref(null)
     const equityChartContainer = ref(null)
+    const selectedRange = ref(null)  // 选中的时间区间
+    const selectionChartContainer = ref(null)
     let chart = null
+    let selectionChart = null
 
     const updatePricePreview = async () => {
       if (!autoCalculateRange.value) return
@@ -258,7 +269,13 @@ export default {
         })
         
         if (response.ok) {
-          priceRangePreview.value = await response.json()
+          const data = await response.json()
+          priceRangePreview.value = data
+          
+          // 自动填充建仓价格为时间序列最早的价格
+          if (data.earliest_price) {
+            entryPrice.value = data.earliest_price
+          }
         } else {
           console.error('Failed to get price range preview')
         }
@@ -298,6 +315,7 @@ export default {
           requestBody.lower_price = lowerPrice.value
           requestBody.upper_price = upperPrice.value
           requestBody.grid_count = gridCount.value
+          requestBody.entry_price = entryPrice.value
         }
 
         const response = await fetch('/api/strategy/backtest', {
@@ -333,41 +351,195 @@ export default {
       }
     }
 
-    const updateChart = () => {
-      if (!equityChartContainer.value || !result.value.equity_curve) return
-
-      equityChartContainer.value.innerHTML = '<canvas id="equityChart"></canvas>'
-      const ctx = document.getElementById('equityChart').getContext('2d')
-
-      const labels = result.value.timestamps.map(ts => {
-        const date = new Date(ts)
-        return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit' })
-      })
-
-      if (chart) chart.destroy()
-
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [{
-            label: '权益曲线',
-            data: result.value.equity_curve,
-            borderColor: '#60a5fa',
-            backgroundColor: 'rgba(96, 165, 250, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: true, position: 'top' } },
-          scales: { y: { beginAtZero: false } }
+    const waitForChart = () => {
+      return new Promise((resolve) => {
+        if (typeof Chart !== 'undefined') {
+          console.log('Chart.js is available')
+          resolve()
+          return
         }
+        
+        let attempts = 0
+        const maxAttempts = 100 // 5秒超时
+        
+        const checkChart = () => {
+          attempts++
+          if (typeof Chart !== 'undefined') {
+            console.log('Chart.js loaded after', attempts, 'attempts')
+            resolve()
+          } else if (attempts >= maxAttempts) {
+            console.error('Chart.js failed to load after 5 seconds')
+            resolve() // 继续执行，但会失败
+          } else {
+            setTimeout(checkChart, 50)
+          }
+        }
+        checkChart()
       })
+    }
+
+    const updateChart = async () => {
+      console.log('=== updateChart Debug Start ===')
+      console.log('1. Container:', equityChartContainer.value)
+      console.log('2. Result:', result.value)
+      console.log('3. Equity curve:', result.value?.equity_curve)
+      console.log('4. Chart.js available:', typeof Chart !== 'undefined')
+      
+      if (!equityChartContainer.value) {
+        console.error('❌ Container element not found')
+        return
+      }
+
+      if (!result.value?.equity_curve) {
+        console.error('❌ No equity curve data')
+        return
+      }
+
+      if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js not loaded')
+        equityChartContainer.value.innerHTML = `
+          <div style="padding: 2rem; text-align: center; color: #f44336; background: #ffebee; border-radius: 8px;">
+            <h4>Chart.js 未加载</h4>
+            <p>请检查网络连接并刷新页面</p>
+          </div>
+        `
+        return
+      }
+
+      // 销毁现有图表
+      if (chart) {
+        console.log('3. Destroying existing chart')
+        chart.destroy()
+        chart = null
+      }
+
+      try {
+        console.log('4. Creating canvas element')
+        
+        // 清空容器
+        equityChartContainer.value.innerHTML = ''
+        
+        // 创建canvas
+        const canvas = document.createElement('canvas')
+        canvas.width = 800
+        canvas.height = 400
+        canvas.style.width = '100%'
+        canvas.style.height = '400px'
+        equityChartContainer.value.appendChild(canvas)
+        
+        console.log('5. Canvas created:', canvas)
+        
+        // 获取2D上下文
+        const ctx = canvas.getContext('2d')
+        console.log('6. Context:', ctx)
+
+        // 准备数据
+        const equityData = result.value.equity_curve
+        const timestamps = result.value.timestamps || []
+        
+        console.log('7. Data length - equity:', equityData.length, 'timestamps:', timestamps.length)
+
+        // 创建标签
+        let labels = []
+        if (timestamps.length > 0) {
+          labels = timestamps.map((ts, index) => {
+            if (index % Math.ceil(timestamps.length / 10) === 0) {
+              const date = new Date(ts)
+              return date.toLocaleDateString('zh-CN')
+            }
+            return ''
+          })
+        } else {
+          // 如果没有时间戳，使用索引
+          labels = equityData.map((_, index) => `${index + 1}`)
+        }
+
+        console.log('8. Labels created:', labels.length)
+
+        // 检测主题
+        const isDark = document.querySelector('.dark-theme') !== null
+        const lineColor = isDark ? '#00e5ff' : '#007bff'
+        const textColor = isDark ? '#e1f5fe' : '#333'
+        const gridColor = isDark ? 'rgba(0, 188, 212, 0.2)' : 'rgba(0, 0, 0, 0.1)'
+
+        console.log('9. Theme detected:', isDark ? 'dark' : 'light')
+
+        // 创建图表配置
+        const config = {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '权益曲线',
+              data: equityData,
+              borderColor: lineColor,
+              backgroundColor: lineColor + '20',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.1,
+              pointRadius: 0,
+              pointHoverRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false, // 禁用动画以避免问题
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  color: textColor
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: false,
+                grid: {
+                  color: gridColor
+                },
+                ticks: {
+                  color: textColor,
+                  callback: function(value) {
+                    return '$' + Math.round(value).toLocaleString()
+                  }
+                }
+              },
+              x: {
+                grid: {
+                  color: gridColor
+                },
+                ticks: {
+                  color: textColor,
+                  maxTicksLimit: 8
+                }
+              }
+            }
+          }
+        }
+
+        console.log('10. Chart config created')
+
+        // 创建图表
+        chart = new Chart(ctx, config)
+        
+        console.log('11. ✅ Chart created successfully:', chart)
+        console.log('=== updateChart Debug End ===')
+
+      } catch (error) {
+        console.error('❌ Chart creation error:', error)
+        equityChartContainer.value.innerHTML = `
+          <div style="padding: 2rem; text-align: center; color: #f44336; background: #ffebee; border-radius: 8px;">
+            <h4>图表创建失败</h4>
+            <p>错误: ${error.message}</p>
+            <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+              刷新页面
+            </button>
+          </div>
+        `
+      }
     }
 
     const formatNumber = (num) => parseFloat(num).toFixed(2)
@@ -381,16 +553,116 @@ export default {
       }
     })
 
+    // 添加调试函数
+    const debugChart = () => {
+      console.log('=== Chart Debug Info ===')
+      console.log('Chart.js available:', typeof Chart !== 'undefined')
+      console.log('Container element:', equityChartContainer.value)
+      console.log('Result data:', result.value)
+      console.log('Equity curve data:', result.value?.equity_curve)
+      console.log('Timestamps:', result.value?.timestamps)
+      console.log('DOM ready:', document.readyState)
+      console.log('========================')
+    }
+
+    // 强制刷新图表
+    const forceUpdateChart = () => {
+      console.log('Force updating chart...')
+      if (result.value && result.value.equity_curve) {
+        updateChart()
+      } else {
+        console.error('No data available for chart update')
+      }
+    }
+
     return {
       symbol, mode, lowerPrice, upperPrice, gridCount, initialCapital, days, leverage, fundingRate, fundingInterval,
-      autoCalculateRange, priceRangePreview, loadingPreview,
+      entryPrice, autoCalculateRange, priceRangePreview, loadingPreview, selectedRange, selectionChartContainer,
       loading, result, message, equityChartContainer,
-      runBacktest, updatePricePreview, toggleAutoCalculate, formatTime, formatNumber, formatPercent
+      runBacktest, updatePricePreview, toggleAutoCalculate, formatTime, formatNumber, formatPercent, debugChart, forceUpdateChart
     }
   }
 }
 </script>
 <style scoped>
+.chart-selection-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid #e0e0e0;
+}
+
+.chart-selection-section h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.selection-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.selected-range-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.selected-range-info h4 {
+  margin: 0 0 0.75rem 0;
+  color: #333;
+  font-size: 1rem;
+}
+
+.range-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.range-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.range-item .label {
+  font-weight: 500;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.range-item .value {
+  font-weight: 600;
+  color: #333;
+  font-family: monospace;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
+}
+
 .price-preview-section, .manual-price-section {
   background: #f8f9fa;
   border-radius: 12px;
@@ -590,8 +862,12 @@ export default {
 
 .chart-container {
   min-height: 400px;
+  height: 400px;
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
 }
 
 .table-container {

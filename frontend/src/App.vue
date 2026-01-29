@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container" :class="{ 'dark-theme': isDarkMode }">
     <div class="app-container">
       <!-- 侧边栏 -->
       <div class="sidebar">
@@ -61,9 +61,14 @@
       <div class="main">
         <div class="header">
           <h1>{{ pageTitle }}</h1>
-          <div class="status-indicator">
-            <div class="status-dot"></div>
-            <span>{{ apiStatus }}</span>
+          <div class="header-controls">
+            <button class="theme-toggle" @click="toggleTheme" :title="isDarkMode ? '切换到浅色主题' : '切换到深色主题'">
+              {{ isDarkMode ? '☀️' : '🌙' }}
+            </button>
+            <div class="status-indicator">
+              <div class="status-dot"></div>
+              <span>{{ apiStatus }}</span>
+            </div>
           </div>
         </div>
 
@@ -121,6 +126,7 @@ export default {
     const authToken = ref('')
     const userInfo = ref({})
     const showWalletModal = ref(false)
+    const isDarkMode = ref(false)
 
     const pageTitle = computed(() => {
       const titles = {
@@ -184,6 +190,12 @@ export default {
       return `${address.slice(0, 4)}...${address.slice(-4)}`
     }
 
+    const toggleTheme = () => {
+      isDarkMode.value = !isDarkMode.value
+      localStorage.setItem('theme', isDarkMode.value ? 'dark' : 'light')
+      console.log('Theme toggled:', isDarkMode.value ? 'dark' : 'light')
+    }
+
     // 检查本地存储的认证信息
     const checkStoredAuth = async () => {
       const storedToken = localStorage.getItem('wallet_token')
@@ -219,6 +231,15 @@ export default {
       checkApiHealth()
       setInterval(checkApiHealth, 5000)
       checkStoredAuth()
+      
+      // 初始化主题
+      const savedTheme = localStorage.getItem('theme')
+      if (savedTheme === 'dark') {
+        isDarkMode.value = true
+      } else {
+        isDarkMode.value = false
+      }
+      console.log('Theme initialized:', isDarkMode.value ? 'dark' : 'light')
     })
 
     return {
@@ -229,20 +250,24 @@ export default {
       authToken,
       userInfo,
       showWalletModal,
+      isDarkMode,
       switchTab,
       onWalletConnected,
       disconnectWallet,
-      formatAddress
+      formatAddress,
+      toggleTheme
     }
   }
 }
 </script>
 
 <style scoped>
+/* 基础样式 */
 .container {
   display: flex;
   height: 100vh;
   background: #f5f5f5;
+  transition: all 0.3s ease;
 }
 
 .app-container {
@@ -261,6 +286,7 @@ export default {
   position: relative;
   height: 100vh;
   overflow-y: auto;
+  transition: all 0.3s ease;
 }
 
 .logo {
@@ -269,6 +295,7 @@ export default {
   font-weight: bold;
   color: #333;
   border-bottom: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
 }
 
 .wallet-section {
@@ -420,12 +447,39 @@ export default {
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.theme-toggle {
+  background: none;
+  border: 2px solid #e0e0e0;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+  border-color: #007bff;
+  transform: scale(1.1);
 }
 
 .header h1 {
   margin: 0;
   color: #333;
   font-size: 1.5rem;
+  transition: all 0.3s ease;
 }
 
 .status-indicator {
@@ -450,26 +504,171 @@ export default {
   padding: 0;
   background: #f5f5f5;
   margin: 0;
+  transition: all 0.3s ease;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 240px;
+/* 深色主题样式 - 科技蓝配色 */
+.container.dark-theme {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
+  color: #e1f5fe;
+  position: relative;
+}
+
+.container.dark-theme::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(0, 188, 212, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 188, 212, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark-theme .sidebar {
+  background: linear-gradient(180deg, #0d1421 0%, #1a2332 100%);
+  border-right: 1px solid #00bcd4;
+  box-shadow: 2px 0 10px rgba(0, 188, 212, 0.1);
+}
+
+.dark-theme .logo {
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.dark-theme .nav-link {
+  color: #b3e5fc;
+}
+
+.dark-theme .nav-link:hover:not(.disabled) {
+  background: linear-gradient(90deg, rgba(0, 188, 212, 0.1) 0%, rgba(0, 229, 255, 0.05) 100%);
+  color: #00e5ff;
+  border-left: 3px solid #00bcd4;
+  transform: translateX(3px);
+}
+
+.dark-theme .nav-link.active {
+  background: linear-gradient(90deg, #00bcd4 0%, #0097a7 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 188, 212, 0.3);
+}
+
+.dark-theme .header {
+  background: linear-gradient(90deg, #0d1421 0%, #1a2332 100%);
+  border-bottom: 2px solid #00bcd4;
+  box-shadow: 0 2px 20px rgba(0, 188, 212, 0.1);
+}
+
+.dark-theme .header h1 {
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.dark-theme .theme-toggle {
+  border: 2px solid #00bcd4;
+  color: #00e5ff;
+  background: rgba(0, 188, 212, 0.1);
+  box-shadow: 0 0 10px rgba(0, 188, 212, 0.2);
+}
+
+.dark-theme .theme-toggle:hover {
+  border-color: #00e5ff;
+  background: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.dark-theme .content {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
+}
+
+.dark-theme .status-dot {
+  background: #00e5ff;
+  animation: pulse-tech 2s infinite;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+.dark-theme .status-indicator {
+  color: #b3e5fc;
+}
+
+.dark-theme .wallet-connect-mini {
+  background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+  border: 1px solid #00bcd4;
+  border-radius: 8px;
+}
+
+.dark-theme .connect-hint {
+  color: #81d4fa;
+}
+
+.dark-theme .wallet-info-sidebar {
+  background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+  border: 1px solid #00bcd4;
+  border-radius: 8px;
+}
+
+.dark-theme .user-name {
+  color: #00e5ff;
+}
+
+.dark-theme .user-address {
+  color: #81d4fa;
+}
+
+.dark-theme .disconnect-btn:hover {
+  background: rgba(0, 188, 212, 0.2);
+}
+
+.dark-theme .modal-content {
+  background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+  border: 1px solid #00bcd4;
+  box-shadow: 0 10px 40px rgba(0, 188, 212, 0.2);
+}
+
+.dark-theme .modal-header {
+  border-bottom: 1px solid #00bcd4;
+}
+
+.dark-theme .modal-header h2 {
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+.dark-theme .close-btn {
+  color: #81d4fa;
+}
+
+.dark-theme .close-btn:hover {
+  background: rgba(0, 188, 212, 0.2);
+  color: #00e5ff;
+}
+
+/* 动画效果 */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
   }
-  
-  .content {
-    padding: 0.75rem;
+  70% {
+    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
   }
 }
 
-@media (max-width: 600px) {
-  .sidebar {
-    width: 200px;
+@keyframes pulse-tech {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.7);
   }
-  
-  .content {
-    padding: 0.5rem;
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 229, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 229, 255, 0);
   }
 }
 
@@ -494,6 +693,7 @@ export default {
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
+  transition: all 0.3s ease;
 }
 
 .modal-header {
@@ -528,78 +728,216 @@ export default {
   padding: 0;
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 240px;
   }
-  70% {
-    box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+  
+  .content {
+    padding: 0.75rem;
   }
 }
 
-/* 覆盖全局样式 */
-:deep(.card) {
-  background: white !important;
-  border: 1px solid #e0e0e0 !important;
-  color: #333 !important;
-}
-
-:deep(.card h2) {
-  color: #333 !important;
-}
-
-:deep(.form-group label) {
-  color: #555 !important;
-}
-
-:deep(.form-group input),
-:deep(.form-group select) {
-  background: white !important;
-  border: 2px solid #e0e0e0 !important;
-  color: #333 !important;
-}
-
-:deep(.form-group input:focus),
-:deep(.form-group select:focus) {
-  border-color: #007bff !important;
-}
-
-:deep(.stat-card) {
-  background: #f8f9fa !important;
-  border: 1px solid #e0e0e0 !important;
-}
-
-:deep(.stat-label) {
-  color: #666 !important;
-}
-
-:deep(.stat-value) {
-  color: #333 !important;
-}
-
-:deep(.stat-value.positive) {
-  color: #28a745 !important;
-}
-
-:deep(.stat-value.negative) {
-  color: #dc3545 !important;
-}
-
-:deep(table th) {
-  background: #f8f9fa !important;
-  color: #555 !important;
-  border-bottom: 2px solid #e0e0e0 !important;
-}
-
-:deep(table td) {
-  color: #333 !important;
-  border-bottom: 1px solid #e0e0e0 !important;
-}
-
-:deep(tbody tr:hover) {
-  background: #f8f9fa !important;
+@media (max-width: 600px) {
+  .sidebar {
+    width: 200px;
+  }
+  
+  .content {
+    padding: 0.5rem;
+  }
 }
 </style>
+/* 全局深色主题样式 - 确保子组件正确显示 */
+.dark-theme :deep(.card) {
+  background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%) !important;
+  border: 1px solid #00bcd4 !important;
+  color: #e1f5fe !important;
+  box-shadow: 0 4px 20px rgba(0, 188, 212, 0.1) !important;
+}
+
+.dark-theme :deep(.card h2),
+.dark-theme :deep(.card h3) {
+  color: #00e5ff !important;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.2) !important;
+}
+
+.dark-theme :deep(.form-group label) {
+  color: #b3e5fc !important;
+}
+
+.dark-theme :deep(.form-group input),
+.dark-theme :deep(.form-group select) {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
+  border: 2px solid #00bcd4 !important;
+  color: #e1f5fe !important;
+  box-shadow: inset 0 2px 10px rgba(0, 188, 212, 0.1) !important;
+}
+
+.dark-theme :deep(.form-group input:focus),
+.dark-theme :deep(.form-group select:focus) {
+  border-color: #00e5ff !important;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.3) !important;
+}
+
+.dark-theme :deep(.btn-primary) {
+  background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3) !important;
+  color: white !important;
+}
+
+.dark-theme :deep(.btn-primary:hover) {
+  background: linear-gradient(135deg, #00e5ff 0%, #00bcd4 100%) !important;
+  box-shadow: 0 6px 25px rgba(0, 229, 255, 0.4) !important;
+  transform: translateY(-2px) !important;
+}
+
+.dark-theme :deep(.btn-secondary) {
+  background: linear-gradient(135deg, #263238 0%, #37474f 100%) !important;
+  border: 1px solid #00bcd4 !important;
+  color: #b3e5fc !important;
+}
+
+.dark-theme :deep(.btn-secondary:hover) {
+  background: linear-gradient(135deg, #37474f 0%, #455a64 100%) !important;
+  border-color: #00e5ff !important;
+  color: #00e5ff !important;
+}
+
+.dark-theme :deep(.stat-card) {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
+  border: 1px solid #00bcd4 !important;
+  box-shadow: 0 2px 15px rgba(0, 188, 212, 0.1) !important;
+}
+
+.dark-theme :deep(.stat-label) {
+  color: #81d4fa !important;
+}
+
+.dark-theme :deep(.stat-value) {
+  color: #00e5ff !important;
+  text-shadow: 0 0 5px rgba(0, 229, 255, 0.2) !important;
+}
+
+.dark-theme :deep(.stat-value.positive) {
+  color: #4caf50 !important;
+}
+
+.dark-theme :deep(.stat-value.negative) {
+  color: #f44336 !important;
+}
+
+.dark-theme :deep(.chart-container) {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
+  border: 1px solid #00bcd4 !important;
+  box-shadow: 0 4px 20px rgba(0, 188, 212, 0.1) !important;
+}
+
+.dark-theme :deep(table) {
+  background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%) !important;
+  border: 1px solid #00bcd4 !important;
+}
+
+.dark-theme :deep(table th) {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
+  color: #b3e5fc !important;
+  border-bottom: 2px solid #00bcd4 !important;
+}
+
+.dark-theme :deep(table td) {
+  color: #e1f5fe !important;
+  border-bottom: 1px solid #00bcd4 !important;
+}
+
+.dark-theme :deep(tbody tr:hover) {
+  background: linear-gradient(90deg, rgba(0, 188, 212, 0.1) 0%, rgba(0, 229, 255, 0.05) 100%) !important;
+}
+
+.dark-theme :deep(.message.success) {
+  background: linear-gradient(135deg, #004d40 0%, #00695c 100%) !important;
+  color: #4dd0e1 !important;
+  border: 1px solid #00bcd4 !important;
+}
+
+.dark-theme :deep(.message.error) {
+  background: linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%) !important;
+  color: #ffcdd2 !important;
+  border: 1px solid #f44336 !important;
+}
+
+.dark-theme :deep(.loading-text) {
+  color: #00e5ff !important;
+}
+
+.dark-theme :deep(.price-preview-section),
+.dark-theme :deep(.manual-price-section),
+.dark-theme :deep(.chart-selection-section) {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
+  border: 1px solid #00bcd4 !important;
+  box-shadow: 0 2px 15px rgba(0, 188, 212, 0.1) !important;
+}
+
+.dark-theme :deep(.stat-item),
+.dark-theme :deep(.range-item) {
+  background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%) !important;
+  border: 1px solid #00bcd4 !important;
+}
+
+.dark-theme :deep(.stat-item .label),
+.dark-theme :deep(.range-item .label) {
+  color: #81d4fa !important;
+}
+
+.dark-theme :deep(.stat-item .value),
+.dark-theme :deep(.range-item .value) {
+  color: #e1f5fe !important;
+}
+/* 图表容器样式修复 */
+.dark-theme :deep(.chart-container) {
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%) !important;
+  border: 1px solid #00bcd4 !important;
+  box-shadow: 0 4px 20px rgba(0, 188, 212, 0.1) !important;
+  border-radius: 12px !important;
+  padding: 1rem !important;
+}
+
+.dark-theme :deep(#equityChart) {
+  background: transparent !important;
+}
+
+/* 确保canvas在深色主题下可见 */
+.dark-theme :deep(canvas) {
+  background: transparent !important;
+  border-radius: 8px !important;
+}
+
+/* 图表标题样式 */
+.dark-theme :deep(.chart-container h3) {
+  color: #00e5ff !important;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.2) !important;
+  margin-bottom: 1rem !important;
+}
+
+/* 修复图表在深色主题下的显示问题 */
+.chart-container {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid #e0e0e0;
+  min-height: 450px;
+}
+
+.chart-container h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+/* 确保图表容器有足够的高度 */
+.chart-container canvas {
+  max-width: 100% !important;
+  height: 400px !important;
+}

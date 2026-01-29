@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深色主题测试 - 科技蓝配色</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
+            color: #e1f5fe;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* 网格背景 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 188, 212, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 188, 212, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            background: linear-gradient(45deg, #00e5ff, #00bcd4, #0097a7);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient-shift 3s ease infinite;
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .card {
+            background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+            border: 1px solid #00bcd4;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 
+                0 4px 20px rgba(0, 188, 212, 0.1),
+                inset 0 1px 0 rgba(0, 229, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 188, 212, 0.2);
+            border-color: #00e5ff;
+            animation: border-glow 2s infinite;
+        }
+
+        @keyframes border-glow {
+            0% { border-color: #00bcd4; }
+            50% { border-color: #00e5ff; }
+            100% { border-color: #00bcd4; }
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #00bcd4 0%, #0097a7 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin: 0.5rem;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.3s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #00e5ff 0%, #00bcd4 100%);
+            box-shadow: 0 6px 25px rgba(0, 229, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            border: 1px solid #00bcd4;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 15px rgba(0, 188, 212, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00e5ff;
+            text-shadow: 0 0 5px rgba(0, 229, 255, 0.2);
+            animation: text-glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes text-glow {
+            from { text-shadow: 0 0 5px rgba(0, 229, 255, 0.2); }
+            to { text-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
+        }
+
+        .stat-label {
+            color: #81d4fa;
+            margin-top: 0.5rem;
+        }
+
+        .input-group {
+            margin: 1rem 0;
+        }
+
+        .input-group label {
+            display: block;
+            color: #b3e5fc;
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            border: 2px solid #00bcd4;
+            border-radius: 6px;
+            color: #e1f5fe;
+            font-size: 1rem;
+            box-shadow: inset 0 2px 10px rgba(0, 188, 212, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #00e5ff;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+            animation: input-glow 2s infinite alternate;
+        }
+
+        @keyframes input-glow {
+            from { box-shadow: 0 0 20px rgba(0, 229, 255, 0.3); }
+            to { box-shadow: 0 0 30px rgba(0, 229, 255, 0.5); }
+        }
+
+        .pulse-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00e5ff;
+            animation: pulse-tech 2s infinite;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes pulse-tech {
+            0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 229, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+        }
+
+        .demo-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+            border: 1px solid #00bcd4;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .demo-table th {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #b3e5fc;
+            padding: 1rem;
+            border-bottom: 2px solid #00bcd4;
+        }
+
+        .demo-table td {
+            color: #e1f5fe;
+            padding: 1rem;
+            border-bottom: 1px solid #00bcd4;
+        }
+
+        .demo-table tr:hover {
+            background: linear-gradient(90deg, rgba(0, 188, 212, 0.1) 0%, rgba(0, 229, 255, 0.05) 100%);
+            transform: translateX(5px);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 科技蓝深色主题展示</h1>
+        
+        <div class="card">
+            <h2>✨ 主要特性</h2>
+            <p>这是一个具有科技感的深色主题设计，采用了科技蓝配色方案，包含以下特性：</p>
+            <ul>
+                <li><span class="pulse-dot"></span>渐变背景和网格纹理</li>
+                <li><span class="pulse-dot"></span>发光边框和悬浮动画</li>
+                <li><span class="pulse-dot"></span>科技感按钮和输入框</li>
+                <li><span class="pulse-dot"></span>动态文字渐变效果</li>
+                <li><span class="pulse-dot"></span>流光扫描动画</li>
+            </ul>
+            
+            <button class="btn">体验按钮效果</button>
+            <button class="btn">科技感交互</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">98.5%</div>
+                <div class="stat-label">系统性能</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">2.4ms</div>
+                <div class="stat-label">响应时间</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1,024</div>
+                <div class="stat-label">活跃连接</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">99.9%</div>
+                <div class="stat-label">可用性</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🎛️ 交互元素测试</h2>
+            <div class="input-group">
+                <label>选择币种</label>
+                <select>
+                    <option>ETH/USDT</option>
+                    <option>BTC/USDT</option>
+                    <option>SOL/USDT</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>输入数量</label>
+                <input type="number" placeholder="请输入数量" value="100">
+            </div>
+            <div class="input-group">
+                <label>策略参数</label>
+                <input type="text" placeholder="配置参数" value="网格策略 - 科技版">
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 数据表格</h2>
+            <table class="demo-table">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>价格</th>
+                        <th>成交量</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>14:52:30</td>
+                        <td>$3,456.78</td>
+                        <td>1,234.56</td>
+                        <td><span class="pulse-dot"></span>活跃</td>
+                    </tr>
+                    <tr>
+                        <td>14:52:25</td>
+                        <td>$3,455.23</td>
+                        <td>987.65</td>
+                        <td><span class="pulse-dot"></span>活跃</td>
+                    </tr>
+                    <tr>
+                        <td>14:52:20</td>
+                        <td>$3,458.91</td>
+                        <td>2,345.67</td>
+                        <td><span class="pulse-dot"></span>活跃</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

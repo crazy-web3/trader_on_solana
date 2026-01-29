@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题切换测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 2px solid #e0e0e0;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            border-color: #007bff;
+            transform: scale(1.1);
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* 深色主题 */
+        body.dark-theme {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
+            color: #e1f5fe;
+        }
+
+        body.dark-theme::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 188, 212, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 188, 212, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        body.dark-theme .header {
+            background: linear-gradient(90deg, #0d1421 0%, #1a2332 100%);
+            border: 2px solid #00bcd4;
+            box-shadow: 0 2px 20px rgba(0, 188, 212, 0.1);
+        }
+
+        body.dark-theme .theme-toggle {
+            border: 2px solid #00bcd4;
+            color: #00e5ff;
+            background: rgba(0, 188, 212, 0.1);
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.2);
+        }
+
+        body.dark-theme .theme-toggle:hover {
+            border-color: #00e5ff;
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+        }
+
+        body.dark-theme .card {
+            background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+            border: 1px solid #00bcd4;
+            box-shadow: 0 4px 20px rgba(0, 188, 212, 0.1);
+        }
+
+        body.dark-theme h1 {
+            color: #00e5ff;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-weight: bold;
+        }
+
+        .status.light {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #2196f3;
+        }
+
+        .status.dark {
+            background: linear-gradient(135deg, #004d40 0%, #00695c 100%);
+            color: #4dd0e1;
+            border: 1px solid #00bcd4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 主题切换测试</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">
+                <span id="theme-icon">🌙</span>
+            </button>
+        </div>
+
+        <div class="card">
+            <h2>当前主题状态</h2>
+            <div id="theme-status" class="status light">
+                ☀️ 浅色主题已激活
+            </div>
+            <p>点击右上角的主题切换按钮来测试深色主题效果。</p>
+        </div>
+
+        <div class="card">
+            <h2>功能说明</h2>
+            <ul>
+                <li>✅ 主题状态会保存到 localStorage</li>
+                <li>✅ 页面刷新后主题设置会保持</li>
+                <li>✅ 科技蓝配色方案</li>
+                <li>✅ 网格背景纹理</li>
+                <li>✅ 发光动画效果</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>测试结果</h2>
+            <p id="test-result">等待测试...</p>
+        </div>
+    </div>
+
+    <script>
+        let isDarkMode = false;
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const body = document.body;
+            const themeIcon = document.getElementById('theme-icon');
+            const themeStatus = document.getElementById('theme-status');
+            const testResult = document.getElementById('test-result');
+
+            if (isDarkMode) {
+                body.classList.add('dark-theme');
+                themeIcon.textContent = '☀️';
+                themeStatus.textContent = '🌙 深色主题已激活';
+                themeStatus.className = 'status dark';
+                testResult.textContent = '✅ 深色主题切换成功！科技蓝配色已应用。';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                body.classList.remove('dark-theme');
+                themeIcon.textContent = '🌙';
+                themeStatus.textContent = '☀️ 浅色主题已激活';
+                themeStatus.className = 'status light';
+                testResult.textContent = '✅ 浅色主题切换成功！';
+                localStorage.setItem('theme', 'light');
+            }
+
+            console.log('Theme toggled:', isDarkMode ? 'dark' : 'light');
+        }
+
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                toggleTheme();
+            }
+            console.log('Theme initialized:', savedTheme || 'light');
+        }
+
+        // 页面加载时初始化主题
+        document.addEventListener('DOMContentLoaded', initTheme);
+    </script>
+</body>
+</html>

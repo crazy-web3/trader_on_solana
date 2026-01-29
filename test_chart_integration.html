@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chart.js 测试</title>
+    <title>图表集成测试</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <style>
         body {
@@ -14,23 +14,16 @@
         }
 
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
-        .chart-container {
+        .test-section {
             background: white;
             border-radius: 12px;
             padding: 2rem;
             margin: 1rem 0;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            min-height: 450px;
-        }
-
-        .chart-container h3 {
-            margin: 0 0 1rem 0;
-            color: #333;
-            font-size: 1.2rem;
         }
 
         .test-button {
@@ -46,6 +39,15 @@
 
         .test-button:hover {
             background: #0056b3;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin: 1rem 0;
+            background: #f8f9fa;
         }
 
         .status {
@@ -66,73 +68,117 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+
+        .debug-info {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Chart.js 功能测试</h1>
+        <h1>📊 图表集成测试</h1>
         
-        <div id="status" class="status">等待测试...</div>
-        
-        <button class="test-button" onclick="testChart()">测试图表创建</button>
-        <button class="test-button" onclick="testEquityCurve()">测试权益曲线</button>
-        <button class="test-button" onclick="testMultipleStrategies()">测试多策略对比</button>
-        
-        <div class="chart-container">
-            <h3>📈 测试图表</h3>
-            <div id="chartContainer" style="width: 100%; height: 400px;">
+        <div class="test-section">
+            <h2>环境检查</h2>
+            <div id="envStatus" class="status">检查中...</div>
+            <div id="debugInfo" class="debug-info"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>图表功能测试</h2>
+            <button class="test-button" onclick="testBasicChart()">基础图表</button>
+            <button class="test-button" onclick="testEquityCurve()">权益曲线</button>
+            <button class="test-button" onclick="testMultiStrategy()">多策略对比</button>
+            <button class="test-button" onclick="testDarkTheme()">深色主题</button>
+            <button class="test-button" onclick="clearChart()">清空图表</button>
+            
+            <div id="chartContainer" class="chart-container">
                 <p style="text-align: center; color: #666; margin-top: 150px;">点击上方按钮开始测试</p>
             </div>
+        </div>
+
+        <div class="test-section">
+            <h2>模拟后端数据测试</h2>
+            <button class="test-button" onclick="testBackendData()">测试后端数据格式</button>
+            <div id="backendResult" class="debug-info" style="display: none;"></div>
         </div>
     </div>
 
     <script>
         let currentChart = null;
+        let isDarkTheme = false;
 
         function updateStatus(message, type = 'success') {
-            const statusEl = document.getElementById('status');
+            const statusEl = document.getElementById('envStatus');
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
         }
 
-        function testChart() {
-            updateStatus('正在测试基础图表功能...');
+        function updateDebugInfo(info) {
+            const debugEl = document.getElementById('debugInfo');
+            debugEl.textContent = info;
+        }
+
+        function checkEnvironment() {
+            let debugInfo = '';
             
+            debugInfo += `Chart.js 可用性: ${typeof Chart !== 'undefined' ? '✅ 可用' : '❌ 不可用'}\n`;
+            debugInfo += `Chart.js 版本: ${typeof Chart !== 'undefined' ? Chart.version || '未知' : 'N/A'}\n`;
+            debugInfo += `浏览器: ${navigator.userAgent}\n`;
+            debugInfo += `DOM 状态: ${document.readyState}\n`;
+            debugInfo += `窗口大小: ${window.innerWidth}x${window.innerHeight}\n`;
+            
+            updateDebugInfo(debugInfo);
+            
+            if (typeof Chart !== 'undefined') {
+                updateStatus('✅ 环境检查通过，Chart.js 已加载');
+            } else {
+                updateStatus('❌ Chart.js 未加载，请检查网络连接', 'error');
+            }
+        }
+
+        function destroyChart() {
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+        }
+
+        function createCanvas() {
+            const container = document.getElementById('chartContainer');
+            container.innerHTML = '<canvas id="testChart" style="width: 100%; height: 400px;"></canvas>';
+            return document.getElementById('testChart');
+        }
+
+        function testBasicChart() {
             try {
-                if (typeof Chart === 'undefined') {
-                    throw new Error('Chart.js 未加载');
-                }
-
-                // 销毁现有图表
-                if (currentChart) {
-                    currentChart.destroy();
-                    currentChart = null;
-                }
-
-                // 创建canvas
-                const container = document.getElementById('chartContainer');
-                container.innerHTML = '<canvas id="testChart" style="width: 100%; height: 400px;"></canvas>';
-                const canvas = document.getElementById('testChart');
+                destroyChart();
+                const canvas = createCanvas();
                 const ctx = canvas.getContext('2d');
 
-                // 创建测试数据
-                const labels = ['1月', '2月', '3月', '4月', '5月', '6月'];
-                const data = [12, 19, 3, 5, 2, 3];
+                const data = {
+                    labels: ['1月', '2月', '3月', '4月', '5月', '6月'],
+                    datasets: [{
+                        label: '测试数据',
+                        data: [12, 19, 3, 5, 2, 3],
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                };
 
                 currentChart = new Chart(ctx, {
                     type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: '测试数据',
-                            data: data,
-                            borderColor: '#007bff',
-                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
+                    data: data,
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
@@ -150,44 +196,28 @@
                     }
                 });
 
-                updateStatus('✅ 基础图表测试成功！');
+                updateStatus('✅ 基础图表创建成功');
             } catch (error) {
-                updateStatus(`❌ 基础图表测试失败: ${error.message}`, 'error');
-                console.error('Chart test error:', error);
+                updateStatus(`❌ 基础图表创建失败: ${error.message}`, 'error');
+                console.error('Basic chart error:', error);
             }
         }
 
         function testEquityCurve() {
-            updateStatus('正在测试权益曲线...');
-            
             try {
-                if (typeof Chart === 'undefined') {
-                    throw new Error('Chart.js 未加载');
-                }
-
-                // 销毁现有图表
-                if (currentChart) {
-                    currentChart.destroy();
-                    currentChart = null;
-                }
-
-                // 创建canvas
-                const container = document.getElementById('chartContainer');
-                container.innerHTML = '<canvas id="testChart" style="width: 100%; height: 400px;"></canvas>';
-                const canvas = document.getElementById('testChart');
+                destroyChart();
+                const canvas = createCanvas();
                 const ctx = canvas.getContext('2d');
 
                 // 模拟权益曲线数据
                 const timestamps = [];
                 const equityCurve = [];
-                const startTime = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7天前
+                const startTime = Date.now() - 7 * 24 * 60 * 60 * 1000;
                 let equity = 10000;
 
                 for (let i = 0; i < 100; i++) {
-                    const time = startTime + i * 60 * 60 * 1000; // 每小时一个点
+                    const time = startTime + i * 60 * 60 * 1000;
                     timestamps.push(time);
-                    
-                    // 模拟权益变化
                     equity += (Math.random() - 0.5) * 200;
                     equityCurve.push(equity);
                 }
@@ -247,31 +277,17 @@
                     }
                 });
 
-                updateStatus('✅ 权益曲线测试成功！');
+                updateStatus('✅ 权益曲线创建成功');
             } catch (error) {
-                updateStatus(`❌ 权益曲线测试失败: ${error.message}`, 'error');
-                console.error('Equity curve test error:', error);
+                updateStatus(`❌ 权益曲线创建失败: ${error.message}`, 'error');
+                console.error('Equity curve error:', error);
             }
         }
 
-        function testMultipleStrategies() {
-            updateStatus('正在测试多策略对比...');
-            
+        function testMultiStrategy() {
             try {
-                if (typeof Chart === 'undefined') {
-                    throw new Error('Chart.js 未加载');
-                }
-
-                // 销毁现有图表
-                if (currentChart) {
-                    currentChart.destroy();
-                    currentChart = null;
-                }
-
-                // 创建canvas
-                const container = document.getElementById('chartContainer');
-                container.innerHTML = '<canvas id="testChart" style="width: 100%; height: 400px;"></canvas>';
-                const canvas = document.getElementById('testChart');
+                destroyChart();
+                const canvas = createCanvas();
                 const ctx = canvas.getContext('2d');
 
                 // 模拟多策略数据
@@ -289,10 +305,9 @@
                     const time = startTime + i * 60 * 60 * 1000;
                     timestamps.push(time);
                     
-                    // 模拟不同策略的表现
-                    longEquity += (Math.random() - 0.3) * 150; // 偏向上涨
-                    shortEquity += (Math.random() - 0.7) * 150; // 偏向下跌
-                    neutralEquity += (Math.random() - 0.5) * 100; // 中性
+                    longEquity += (Math.random() - 0.3) * 150;
+                    shortEquity += (Math.random() - 0.7) * 150;
+                    neutralEquity += (Math.random() - 0.5) * 100;
                     
                     longStrategy.push(longEquity);
                     shortStrategy.push(shortEquity);
@@ -377,21 +392,67 @@
                     }
                 });
 
-                updateStatus('✅ 多策略对比测试成功！');
+                updateStatus('✅ 多策略对比创建成功');
             } catch (error) {
-                updateStatus(`❌ 多策略对比测试失败: ${error.message}`, 'error');
-                console.error('Multiple strategies test error:', error);
+                updateStatus(`❌ 多策略对比创建失败: ${error.message}`, 'error');
+                console.error('Multi strategy error:', error);
             }
         }
 
-        // 页面加载时检查Chart.js
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof Chart !== 'undefined') {
-                updateStatus('✅ Chart.js 已加载，可以开始测试');
+        function testDarkTheme() {
+            isDarkTheme = !isDarkTheme;
+            
+            if (isDarkTheme) {
+                document.body.style.background = 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%)';
+                document.body.style.color = '#e1f5fe';
+                updateStatus('🌙 深色主题已激活，重新创建图表测试');
             } else {
-                updateStatus('❌ Chart.js 未加载，请检查网络连接', 'error');
+                document.body.style.background = '#f5f5f5';
+                document.body.style.color = '#333';
+                updateStatus('☀️ 浅色主题已激活，重新创建图表测试');
             }
-        });
+            
+            // 重新创建当前图表以应用主题
+            if (currentChart) {
+                testEquityCurve();
+            }
+        }
+
+        function clearChart() {
+            destroyChart();
+            const container = document.getElementById('chartContainer');
+            container.innerHTML = '<p style="text-align: center; color: #666; margin-top: 150px;">图表已清空</p>';
+            updateStatus('🗑️ 图表已清空');
+        }
+
+        function testBackendData() {
+            // 模拟后端返回的数据格式
+            const mockBackendData = {
+                equity_curve: [10000, 10150, 9980, 10200, 10050, 10300, 10180, 10400],
+                timestamps: [
+                    Date.now() - 7 * 24 * 60 * 60 * 1000,
+                    Date.now() - 6 * 24 * 60 * 60 * 1000,
+                    Date.now() - 5 * 24 * 60 * 60 * 1000,
+                    Date.now() - 4 * 24 * 60 * 60 * 1000,
+                    Date.now() - 3 * 24 * 60 * 60 * 1000,
+                    Date.now() - 2 * 24 * 60 * 60 * 1000,
+                    Date.now() - 1 * 24 * 60 * 60 * 1000,
+                    Date.now()
+                ],
+                total_return: 0.04,
+                final_capital: 10400,
+                total_trades: 15
+            };
+
+            const resultEl = document.getElementById('backendResult');
+            resultEl.style.display = 'block';
+            resultEl.textContent = JSON.stringify(mockBackendData, null, 2);
+            
+            updateStatus('✅ 后端数据格式测试完成，查看下方数据结构');
+        }
+
+        // 页面加载时检查环境
+        document.addEventListener('DOMContentLoaded', checkEnvironment);
     </script>
 </body>
 </html>

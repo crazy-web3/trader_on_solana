@@ -356,6 +356,84 @@ def clear_cache():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/strategy/calculate-from-range", methods=["POST"])
+def calculate_strategy_from_range():
+    """Calculate strategy parameters from selected time range."""
+    try:
+        data = request.get_json()
+        symbol = data.get('symbol', 'ETH/USDT')
+        start_timestamp = data.get('start_timestamp')  # 选中区间的开始时间
+        end_timestamp = data.get('end_timestamp')      # 选中区间的结束时间
+        
+        if not start_timestamp or not end_timestamp:
+            return jsonify({'error': 'Start and end timestamps are required'}), 400
+        
+        # 获取选中区间的K线数据
+        adapter = MarketDataAdapter()
+        
+        # 计算需要多少天的数据
+        time_diff_ms = end_timestamp - start_timestamp
+        days = max(1, int(time_diff_ms / (24 * 60 * 60 * 1000)) + 1)
+        
+        klines = adapter.get_klines(symbol, '4h', days)
+        
+        # 过滤出选中区间内的数据
+        selected_klines = [
+            kline for kline in klines 
+            if start_timestamp <= kline.timestamp <= end_timestamp
+        ]
+        
+        if not selected_klines:
+            return jsonify({'error': 'No data found in selected range'}), 400
+        
+        # 计算参数
+        high_prices = [kline.high for kline in selected_klines]
+        low_prices = [kline.low for kline in selected_klines]
+        
+        historical_high = max(high_prices)
+        historical_low = min(low_prices)
+        entry_price = selected_klines[0].close  # 时间序列最早的价格
+        current_price = selected_klines[-1].close  # 时间序列最晚的价格
+        
+        # 计算价格区间（向上向下取整到100的倍数）
+        lower_price = math.floor(historical_low / 100) * 100
+        upper_price = math.ceil(historical_high / 100) * 100
+        
+        # 计算网格数量（基于100的间距）
+        grid_spacing = get_optimal_grid_spacing(symbol, current_price)
+        grid_count = calculate_grid_count(lower_price, upper_price, grid_spacing)
+        
+        result = {
+            'selected_range': {
+                'start_timestamp': start_timestamp,
+                'end_timestamp': end_timestamp,
+                'start_time': datetime.fromtimestamp(start_timestamp / 1000).isoformat(),
+                'end_time': datetime.fromtimestamp(end_timestamp / 1000).isoformat(),
+                'data_points': len(selected_klines)
+            },
+            'price_analysis': {
+                'historical_high': historical_high,
+                'historical_low': historical_low,
+                'entry_price': entry_price,
+                'current_price': current_price,
+                'price_range': upper_price - lower_price
+            },
+            'calculated_params': {
+                'lower_price': lower_price,
+                'upper_price': upper_price,
+                'grid_count': grid_count,
+                'grid_spacing': grid_spacing,
+                'entry_price': entry_price
+            }
+        }
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Calculate from range error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/api/strategy/price-range", methods=["POST"])
 def get_price_range():
     """Get calculated price range and grid count for a symbol.
@@ -414,6 +492,7 @@ def get_price_range():
         # Calculate statistics
         high_prices = [kline.high for kline in valid_klines]
         low_prices = [kline.low for kline in valid_klines]
+        earliest_price = valid_klines[0].close  # 时间序列最早的价格
         
         return jsonify({
             "symbol": symbol,
@@ -422,6 +501,7 @@ def get_price_range():
             "current_price": current_price,
             "historical_high": max(high_prices),
             "historical_low": min(low_prices),
+            "earliest_price": earliest_price,  # 添加最早价格
             "calculated_range": {
                 "lower_price": lower_price,
                 "upper_price": upper_price,
@@ -545,6 +625,8 @@ def backtest_strategy():
         logger.info(f"Backtesting perpetual contract strategy with {len(valid_klines)} K-lines, leverage: {leverage}x, funding rate: {funding_rate}")
         
         # Create strategy config
+        entry_price = float(data.get("entry_price", valid_klines[0].close))  # 默认使用第一个K线的收盘价
+        
         config = StrategyConfig(
             symbol=symbol,
             mode=mode,
@@ -556,6 +638,7 @@ def backtest_strategy():
             leverage=leverage,
             funding_rate=funding_rate,
             funding_interval=funding_interval,
+            entry_price=entry_price,
         )
         
         # Execute strategy

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单图表测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            margin: 2rem 0;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            background: #f8f9fa;
+            position: relative;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0.5rem;
+            font-size: 1rem;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 简单图表测试</h1>
+        
+        <div id="status" class="status info">准备测试...</div>
+        
+        <button class="test-button" onclick="testBasicChart()">创建基础图表</button>
+        <button class="test-button" onclick="testWithRealData()">使用真实数据</button>
+        <button class="test-button" onclick="testInVueStyle()">Vue风格测试</button>
+        <button class="test-button" onclick="clearAll()">清空所有</button>
+        
+        <div id="chartContainer" class="chart-container">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666;">
+                <h3>📊 图表区域</h3>
+                <p>点击上方按钮开始测试</p>
+            </div>
+        </div>
+        
+        <div id="logs" style="background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 1rem; margin: 1rem 0; font-family: monospace; font-size: 0.9rem; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        let currentChart = null;
+        let logContainer = document.getElementById('logs');
+
+        function log(message) {
+            console.log(message);
+            logContainer.innerHTML += message + '\n';
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+            log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearAll() {
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+            document.getElementById('chartContainer').innerHTML = `
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666;">
+                    <h3>📊 图表区域</h3>
+                    <p>点击上方按钮开始测试</p>
+                </div>
+            `;
+            logContainer.innerHTML = '';
+            updateStatus('已清空所有内容');
+        }
+
+        function testBasicChart() {
+            try {
+                updateStatus('开始创建基础图表...', 'info');
+                
+                log('1. 检查Chart.js可用性...');
+                if (typeof Chart === 'undefined') {
+                    throw new Error('Chart.js未加载');
+                }
+                log('✅ Chart.js已加载');
+
+                log('2. 销毁现有图表...');
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                    log('✅ 现有图表已销毁');
+                }
+
+                log('3. 创建canvas元素...');
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '<canvas id="testChart" width="800" height="400" style="width: 100%; height: 100%;"></canvas>';
+                const canvas = document.getElementById('testChart');
+                const ctx = canvas.getContext('2d');
+                log('✅ Canvas元素已创建');
+
+                log('4. 准备测试数据...');
+                const data = {
+                    labels: ['点1', '点2', '点3', '点4', '点5'],
+                    datasets: [{
+                        label: '测试线',
+                        data: [10, 20, 15, 25, 30],
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                };
+                log('✅ 测试数据已准备');
+
+                log('5. 创建Chart实例...');
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+                log('✅ Chart实例已创建');
+
+                updateStatus('✅ 基础图表创建成功！', 'success');
+                log(`图表ID: ${currentChart.id}`);
+                log(`数据点数量: ${data.datasets[0].data.length}`);
+
+            } catch (error) {
+                updateStatus(`❌ 基础图表创建失败: ${error.message}`, 'error');
+                log(`错误详情: ${error.stack}`);
+            }
+        }
+
+        function testWithRealData() {
+            try {
+                updateStatus('开始使用真实数据创建图表...', 'info');
+                
+                log('1. 检查Chart.js可用性...');
+                if (typeof Chart === 'undefined') {
+                    throw new Error('Chart.js未加载');
+                }
+
+                log('2. 销毁现有图表...');
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+
+                log('3. 创建canvas元素...');
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '<canvas id="testChart" width="800" height="400" style="width: 100%; height: 100%;"></canvas>';
+                const canvas = document.getElementById('testChart');
+                const ctx = canvas.getContext('2d');
+
+                log('4. 生成模拟权益曲线数据...');
+                const equityData = [];
+                const timestamps = [];
+                let equity = 10000;
+                const now = Date.now();
+                
+                for (let i = 0; i < 50; i++) {
+                    equity += (Math.random() - 0.5) * 200;
+                    equityData.push(Math.round(equity * 100) / 100);
+                    timestamps.push(now - (50 - i) * 60 * 60 * 1000);
+                }
+
+                const labels = timestamps.map((ts, index) => {
+                    if (index % 5 === 0) {
+                        const date = new Date(ts);
+                        return date.toLocaleDateString('zh-CN');
+                    }
+                    return '';
+                });
+
+                log(`✅ 生成了${equityData.length}个数据点`);
+                log(`起始资金: $${equityData[0]}`);
+                log(`最终资金: $${equityData[equityData.length-1]}`);
+
+                log('5. 创建权益曲线图表...');
+                currentChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '权益曲线',
+                            data: equityData,
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + Math.round(value).toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxTicksLimit: 8
+                                }
+                            }
+                        }
+                    }
+                });
+
+                updateStatus('✅ 真实数据图表创建成功！', 'success');
+                log('✅ 权益曲线图表创建完成');
+
+            } catch (error) {
+                updateStatus(`❌ 真实数据图表创建失败: ${error.message}`, 'error');
+                log(`错误详情: ${error.stack}`);
+            }
+        }
+
+        function testInVueStyle() {
+            try {
+                updateStatus('开始Vue风格测试...', 'info');
+                
+                log('1. 模拟Vue组件的图表创建过程...');
+                
+                // 模拟Vue的数据
+                const mockResult = {
+                    equity_curve: [10000, 10150, 9980, 10200, 10050, 10300, 10180, 10400, 10250, 10500],
+                    timestamps: [
+                        Date.now() - 9 * 60 * 60 * 1000,
+                        Date.now() - 8 * 60 * 60 * 1000,
+                        Date.now() - 7 * 60 * 60 * 1000,
+                        Date.now() - 6 * 60 * 60 * 1000,
+                        Date.now() - 5 * 60 * 60 * 1000,
+                        Date.now() - 4 * 60 * 60 * 1000,
+                        Date.now() - 3 * 60 * 60 * 1000,
+                        Date.now() - 2 * 60 * 60 * 1000,
+                        Date.now() - 1 * 60 * 60 * 1000,
+                        Date.now()
+                    ]
+                };
+
+                log('2. 检查数据一致性...');
+                if (mockResult.equity_curve.length !== mockResult.timestamps.length) {
+                    throw new Error(`数据长度不一致: equity_curve=${mockResult.equity_curve.length}, timestamps=${mockResult.timestamps.length}`);
+                }
+                log('✅ 数据长度一致');
+
+                log('3. 销毁现有图表...');
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+
+                log('4. 创建canvas (Vue风格)...');
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '';
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 400;
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                container.appendChild(canvas);
+                const ctx = canvas.getContext('2d');
+
+                log('5. 准备标签...');
+                const labels = mockResult.timestamps.map(ts => {
+                    const date = new Date(ts);
+                    return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit' });
+                });
+
+                log('6. 创建图表配置...');
+                const config = {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '权益曲线',
+                            data: mockResult.equity_curve,
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + Math.round(value).toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    maxTicksLimit: 8
+                                }
+                            }
+                        }
+                    }
+                };
+
+                log('7. 创建Chart实例...');
+                currentChart = new Chart(ctx, config);
+
+                updateStatus('✅ Vue风格测试成功！', 'success');
+                log('✅ Vue风格图表创建完成');
+                log(`最终收益: $${mockResult.equity_curve[mockResult.equity_curve.length-1] - mockResult.equity_curve[0]}`);
+
+            } catch (error) {
+                updateStatus(`❌ Vue风格测试失败: ${error.message}`, 'error');
+                log(`错误详情: ${error.stack}`);
+            }
+        }
+
+        // 页面加载时检查环境
+        document.addEventListener('DOMContentLoaded', function() {
+            log('页面加载完成');
+            log(`Chart.js可用性: ${typeof Chart !== 'undefined' ? '✅' : '❌'}`);
+            log(`浏览器: ${navigator.userAgent}`);
+            log(`时间: ${new Date().toLocaleString()}`);
+            
+            if (typeof Chart !== 'undefined') {
+                updateStatus('✅ 环境检查通过，可以开始测试', 'success');
+            } else {
+                updateStatus('❌ Chart.js未加载，请检查网络连接', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
