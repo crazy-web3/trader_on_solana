@@ -92,11 +92,31 @@ docker-compose up -d --build
 
 ---
 
+## 📁 Project Structure
+
+```
+trader_on_solana/
+├── 📱 frontend/              # Vue.js frontend application
+├── 🧠 strategy_engine/       # Grid trading strategy implementation
+├── 🔄 backtest_engine/       # Backtesting engine
+├── 📊 market_data_layer/     # Market data fetching and validation
+├── 🔐 wallet_auth/           # Solana wallet authentication
+├── 🛠️ utils/                # Utility functions
+├── 📚 docs/                 # Documentation files
+├── 🧪 tests/                # Unit tests
+├── 📦 archive/              # Archived development files
+│   ├── test_files/          # Python test scripts
+│   ├── html_demos/          # HTML demo pages
+│   ├── scripts/             # Utility scripts
+│   └── config/              # Configuration files
+├── 🐍 app.py                # Main Flask backend server
+├── 📋 requirements.txt      # Python dependencies
+└── 📖 README.md            # This file
+```
+
 ## **一、项目背景**
 
 **赛道**：交易与策略机器人（Trading & Strategy Bots）
-
-**目标**：基于 Solana 链生态，构建一个可回测、可配置的永续合约网格交易机器人 MVP，支持杠杆交易和资金费率计算，用于学习与实践，不以收益承诺为导向。
 
 **核心理念**：
 
