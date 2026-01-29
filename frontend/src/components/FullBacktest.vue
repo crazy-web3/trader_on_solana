@@ -14,8 +14,72 @@
         </div>
         <div class="form-group">
           <label>回测天数</label>
-          <input v-model.number="days" type="number" min="1" max="365">
+          <input v-model.number="days" type="number" min="1" max="365" @change="updatePricePreview">
         </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" v-model="autoCalculateRange" @change="toggleAutoCalculate"> 
+            自动计算价格区间
+          </label>
+        </div>
+      </div>
+      
+      <!-- 价格区间预览 -->
+      <div v-if="autoCalculateRange" class="price-preview-section">
+        <h3>📊 价格区间预览</h3>
+        <div v-if="loadingPreview" class="loading-text">正在计算价格区间...</div>
+        <div v-else-if="priceRangePreview" class="price-preview">
+          <div class="preview-stats">
+            <div class="stat-item">
+              <span class="label">当前价格:</span>
+              <span class="value">${{ formatNumber(priceRangePreview.current_price) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">历史高点:</span>
+              <span class="value">${{ formatNumber(priceRangePreview.historical_high) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">历史低点:</span>
+              <span class="value">${{ formatNumber(priceRangePreview.historical_low) }}</span>
+            </div>
+          </div>
+          <div class="calculated-range">
+            <div class="range-item">
+              <span class="label">计算区间:</span>
+              <span class="value">${{ formatNumber(priceRangePreview.calculated_range.lower_price) }} - ${{ formatNumber(priceRangePreview.calculated_range.upper_price) }}</span>
+            </div>
+            <div class="range-item">
+              <span class="label">网格数量:</span>
+              <span class="value">{{ priceRangePreview.calculated_range.grid_count }} 个</span>
+            </div>
+            <div class="range-item">
+              <span class="label">网格间距:</span>
+              <span class="value">${{ formatNumber(priceRangePreview.calculated_range.grid_spacing) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 手动设置价格区间 -->
+      <div v-if="!autoCalculateRange" class="manual-price-section">
+        <h3>⚙️ 手动设置价格区间</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>下限价格</label>
+            <input v-model.number="lowerPrice" type="number" step="100">
+          </div>
+          <div class="form-group">
+            <label>上限价格</label>
+            <input v-model.number="upperPrice" type="number" step="100">
+          </div>
+          <div class="form-group">
+            <label>网格数量</label>
+            <input v-model.number="gridCount" type="number" min="2" max="100">
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-grid">
         <div class="form-group">
           <label>初始资金</label>
           <input v-model.number="initialCapital" type="number" step="100">
@@ -28,7 +92,16 @@
             <option value="3">3x</option>
             <option value="5">5x</option>
             <option value="10">10x</option>
+            <option value="20">20x</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>资金费率 (%)</label>
+          <input v-model.number="fundingRate" type="number" step="0.001" min="-1" max="1" placeholder="0.000">
+        </div>
+        <div class="form-group">
+          <label>建仓价格</label>
+          <input v-model.number="entryPrice" type="number" step="0.01" :disabled="autoCalculateRange">
         </div>
       </div>
       
@@ -77,9 +150,14 @@
     <div v-if="result" class="card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2>📈 权益曲线对比</h2>
-        <button @click="debugChart" style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
-          调试图表
-        </button>
+        <div>
+          <button @click="forceUpdateChart" style="padding: 0.5rem 1rem; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-right: 0.5rem;">
+            强制刷新
+          </button>
+          <button @click="debugChart" style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+            调试图表
+          </button>
+        </div>
       </div>
       <div class="chart-container" ref="equityChartContainer">
         <p style="text-align: center; color: #666; margin-top: 150px;">正在加载图表...</p>
@@ -94,14 +172,63 @@ import { ref, onMounted } from 'vue'
 export default {
   setup() {
     const symbol = ref('ETH/USDT')
+    const lowerPrice = ref(3200)
+    const upperPrice = ref(3600)
+    const gridCount = ref(10)
     const initialCapital = ref(10000)
     const days = ref(90)
     const leverage = ref(1.0)
+    const fundingRate = ref(0.0)
+    const fundingInterval = ref(8)
+    const entryPrice = ref(0)  // 建仓价格
+    const autoCalculateRange = ref(true)
+    const priceRangePreview = ref(null)
+    const loadingPreview = ref(false)
     const loading = ref(false)
     const result = ref(null)
     const message = ref(null)
     const equityChartContainer = ref(null)
     let chart = null
+
+    const updatePricePreview = async () => {
+      if (!autoCalculateRange.value) return
+      
+      loadingPreview.value = true
+      try {
+        const response = await fetch('/api/strategy/price-range', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbol: symbol.value,
+            days: days.value
+          })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          priceRangePreview.value = data
+          
+          // 自动填充建仓价格为时间序列最早的价格
+          if (data.earliest_price) {
+            entryPrice.value = data.earliest_price
+          }
+        } else {
+          console.error('Failed to get price range preview')
+        }
+      } catch (error) {
+        console.error('Price preview error:', error)
+      } finally {
+        loadingPreview.value = false
+      }
+    }
+
+    const toggleAutoCalculate = () => {
+      if (autoCalculateRange.value) {
+        updatePricePreview()
+      } else {
+        priceRangePreview.value = null
+      }
+    }
 
     const runBacktest = async () => {
       loading.value = true
@@ -113,9 +240,17 @@ export default {
           initial_capital: initialCapital.value,
           days: days.value,
           leverage: leverage.value,
-          funding_rate: 0.0,
-          funding_interval: 8,
-          auto_calculate_range: true
+          funding_rate: fundingRate.value / 100, // Convert percentage to decimal
+          funding_interval: fundingInterval.value,
+          auto_calculate_range: autoCalculateRange.value
+        }
+
+        // Add manual parameters if not auto-calculating
+        if (!autoCalculateRange.value) {
+          requestBody.lower_price = lowerPrice.value
+          requestBody.upper_price = upperPrice.value
+          requestBody.grid_count = gridCount.value
+          requestBody.entry_price = entryPrice.value
         }
 
         const response = await fetch('/api/backtest/run', {
@@ -134,7 +269,42 @@ export default {
         const data = await response.json()
         result.value = data
         
-        updateChart()
+        // Update manual fields with calculated values if auto-calculated
+        if (autoCalculateRange.value && data.calculated_params) {
+          lowerPrice.value = data.calculated_params.lower_price
+          upperPrice.value = data.calculated_params.upper_price
+          gridCount.value = data.calculated_params.grid_count
+        }
+        
+        const chartUpdateSuccess = await updateChart()
+        
+        // Auto-refresh chart twice to ensure proper display
+        if (chartUpdateSuccess) {
+          setTimeout(async () => {
+            console.log('Auto-refresh 1: Updating chart after 500ms')
+            const success1 = await updateChart()
+            if (!success1) {
+              console.warn('Auto-refresh 1 failed, trying again...')
+              setTimeout(() => updateChart(), 200)
+            }
+          }, 500)
+          
+          setTimeout(async () => {
+            console.log('Auto-refresh 2: Updating chart after 1000ms')
+            const success2 = await updateChart()
+            if (!success2) {
+              console.warn('Auto-refresh 2 failed, trying again...')
+              setTimeout(() => updateChart(), 200)
+            }
+          }, 1000)
+        } else {
+          // If initial chart creation failed, try more aggressive refresh
+          console.warn('Initial chart creation failed, using aggressive refresh strategy')
+          setTimeout(() => updateChart(), 1000)
+          setTimeout(() => updateChart(), 2000)
+          setTimeout(() => updateChart(), 3000)
+        }
+        
         message.value = { type: 'success', text: '✅ 完整回测完成' }
       } catch (error) {
         console.error('Backtest error:', error)
@@ -180,12 +350,12 @@ export default {
       
       if (!equityChartContainer.value) {
         console.error('❌ Container element not found')
-        return
+        return false
       }
 
       if (!result.value?.strategies) {
         console.error('❌ No strategies data')
-        return
+        return false
       }
 
       if (typeof Chart === 'undefined') {
@@ -196,13 +366,17 @@ export default {
             <p>请检查网络连接并刷新页面</p>
           </div>
         `
-        return
+        return false
       }
 
       // 销毁现有图表
       if (chart) {
         console.log('3. Destroying existing chart')
-        chart.destroy()
+        try {
+          chart.destroy()
+        } catch (e) {
+          console.warn('Chart destroy warning:', e)
+        }
         chart = null
       }
 
@@ -231,6 +405,15 @@ export default {
         const timestamps = firstStrategy.timestamps || []
         
         console.log('7. Timestamps length:', timestamps.length)
+
+        // 验证数据有效性
+        const hasValidData = Object.values(result.value.strategies).some(
+          strategy => strategy.equity_curve && strategy.equity_curve.length > 0
+        )
+        
+        if (!hasValidData) {
+          throw new Error('没有有效的策略权益曲线数据')
+        }
 
         // 创建标签
         let labels = []
@@ -341,6 +524,8 @@ export default {
         
         console.log('13. ✅ Chart created successfully:', chart)
         console.log('=== FullBacktest updateChart Debug End ===')
+        
+        return true
 
       } catch (error) {
         console.error('❌ Chart creation error:', error)
@@ -353,6 +538,7 @@ export default {
             </button>
           </div>
         `
+        return false
       }
     }
 
@@ -372,6 +558,33 @@ export default {
       console.log('=====================================')
     }
 
+    // 强制刷新图表
+    const forceUpdateChart = async () => {
+      console.log('Force updating chart...')
+      if (result.value && result.value.strategies) {
+        const success = await updateChart()
+        
+        // If force update succeeds, do additional refreshes
+        if (success) {
+          setTimeout(() => {
+            console.log('Force refresh 1: Additional update after 300ms')
+            updateChart()
+          }, 300)
+          
+          setTimeout(() => {
+            console.log('Force refresh 2: Additional update after 600ms')
+            updateChart()
+          }, 600)
+        } else {
+          console.error('Force update failed, trying aggressive refresh')
+          setTimeout(() => updateChart(), 500)
+          setTimeout(() => updateChart(), 1000)
+        }
+      } else {
+        console.error('No data available for chart update')
+      }
+    }
+
     const getStrategyName = (strategy) => {
       const names = {
         'long': '做多网格',
@@ -384,10 +597,18 @@ export default {
     const formatNumber = (num) => parseFloat(num).toFixed(2)
     const formatPercent = (num) => (num * 100).toFixed(2) + '%'
 
+    // Auto-update price preview when component mounts
+    onMounted(() => {
+      if (autoCalculateRange.value) {
+        updatePricePreview()
+      }
+    })
+
     return {
-      symbol, initialCapital, days, leverage,
+      symbol, lowerPrice, upperPrice, gridCount, initialCapital, days, leverage, fundingRate, fundingInterval,
+      entryPrice, autoCalculateRange, priceRangePreview, loadingPreview,
       loading, result, message, equityChartContainer,
-      runBacktest, getStrategyName, formatNumber, formatPercent, debugChart
+      runBacktest, updatePricePreview, toggleAutoCalculate, getStrategyName, formatNumber, formatPercent, debugChart, forceUpdateChart
     }
   }
 }
@@ -402,11 +623,72 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.card:last-child {
+  margin-bottom: 1rem;
+}
+
 .card h2 {
   margin: 0 0 1rem 0;
   color: #333;
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.price-preview-section, .manual-price-section {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid #e0e0e0;
+}
+
+.price-preview-section h3, .manual-price-section h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.loading-text {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+.price-preview {
+  display: grid;
+  gap: 1rem;
+}
+
+.preview-stats, .calculated-range {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-item, .range-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.stat-item .label, .range-item .label {
+  font-weight: 500;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.stat-item .value, .range-item .value {
+  font-weight: 600;
+  color: #333;
+  font-family: monospace;
+}
+
+.form-group label input[type="checkbox"] {
+  margin-right: 0.5rem;
 }
 
 .form-grid {
@@ -573,6 +855,10 @@ export default {
 
 @media (max-width: 768px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .preview-stats, .calculated-range {
     grid-template-columns: 1fr;
   }
   

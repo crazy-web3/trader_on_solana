@@ -5,7 +5,14 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 3000,
-    host: '0.0.0.0',
+    host: true,
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '0.0.0.0',
+      'kind-ave-conservative-familiar.trycloudflare.com',
+      '.trycloudflare.com'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:5001',

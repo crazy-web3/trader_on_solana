@@ -81,12 +81,13 @@ docker-compose up -d --build
 
 ### Available Features
 - 📊 **Market Data**: Real-time K-line data from Binance API with interactive charts
-- 📈 **Strategy Backtest**: Quick backtesting with configurable parameters and leverage support
-- 🔍 **Full Backtest**: Historical backtesting up to 3 years with strategy comparison
+- 📈 **Strategy Backtest**: Quick backtesting with configurable parameters, leverage support, and grid profit tracking
+- 🔍 **Full Backtest**: Historical backtesting up to 3 years with strategy comparison (Long/Short/Neutral)
 - ⚙️ **Parameter Optimization**: Grid Search for optimal parameters (requires wallet connection)
 - 🔐 **Wallet Authentication**: Solana wallet login with whitelist control
 - 💰 **Perpetual Contracts**: Support for leveraged trading (1x-100x) with funding rates
-- 🎨 **Dark/Light Theme**: Toggle between dark and light themes with persistent settings
+- 📊 **Grid Analytics**: Track grid profit accumulation and unrealized PnL from unpaired positions
+- 🎨 **Dark/Light Theme**: Toggle between dark and light themes with persistent settings (🌙 button in top-right)
 - 📱 **Responsive Design**: Mobile-friendly interface with adaptive layouts
 
 ---

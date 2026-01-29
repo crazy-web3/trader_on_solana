@@ -53,6 +53,7 @@ class GridStrategyEngine:
         self.position_size = 0.0  # Net position size (positive for long, negative for short)
         self.total_fees = 0.0
         self.total_funding_fees = 0.0
+        self.grid_profit = 0.0  # 网格收益累计（已配对交易的收益）
         self.equity_curve: List[float] = []  # 不包含初始值，在处理第一个K线时添加
         self.timestamps: List[int] = []
         self.max_equity = config.initial_capital
@@ -437,8 +438,10 @@ class GridStrategyEngine:
                     if self.grid_positions[sell_grid_idx] >= 0:
                         del self.grid_positions[sell_grid_idx]
                         
-                    # Add PnL to capital
+                    # Add PnL to capital and grid profit
                     self.capital += pnl
+                    if pnl > 0:  # 只有盈利的配对交易才计入网格收益
+                        self.grid_profit += pnl
                 else:
                     # Opening a long position or covering without corresponding short
                     if order.grid_idx not in self.grid_positions:
@@ -464,6 +467,8 @@ class GridStrategyEngine:
                         del self.grid_positions[sell_grid_idx]
                         
                     self.capital += pnl
+                    if pnl > 0:  # 只有盈利的配对交易才计入网格收益
+                        self.grid_profit += pnl
                 else:
                     # Opening a long position
                     if order.grid_idx not in self.grid_positions:
@@ -488,8 +493,10 @@ class GridStrategyEngine:
                     if self.grid_positions[buy_grid_idx] <= 0:
                         del self.grid_positions[buy_grid_idx]
                         
-                    # Add PnL to capital
+                    # Add PnL to capital and grid profit
                     self.capital += pnl
+                    if pnl > 0:  # 只有盈利的配对交易才计入网格收益
+                        self.grid_profit += pnl
                 else:
                     # Opening a short position
                     if order.grid_idx not in self.grid_positions:
@@ -515,6 +522,8 @@ class GridStrategyEngine:
                         del self.grid_positions[buy_grid_idx]
                         
                     self.capital += pnl
+                    if pnl > 0:  # 只有盈利的配对交易才计入网格收益
+                        self.grid_profit += pnl
                 else:
                     # Opening a short position
                     if order.grid_idx not in self.grid_positions:
@@ -687,6 +696,27 @@ class GridStrategyEngine:
                     max_drawdown_pct = drawdown
                     max_drawdown = peak - equity
         
+        # Calculate unrealized PnL from current positions
+        unrealized_pnl = 0.0
+        if self.equity_curve:  # Use last price from equity curve calculation
+            last_price = self.equity_curve[-1] - self.capital  # Extract price component
+            # Recalculate using actual last price from timestamps
+            if self.timestamps:
+                # We need to get the last price, but we don't have direct access
+                # For now, calculate based on current positions and average grid price
+                for grid_idx, position in self.grid_positions.items():
+                    if position == 0:
+                        continue
+                    
+                    entry_price = self.config.lower_price + grid_idx * self.grid_gap
+                    # Use the middle of the price range as approximation for current price
+                    current_price = (self.config.lower_price + self.config.upper_price) / 2
+                    
+                    if position > 0:  # Long position
+                        unrealized_pnl += position * (current_price - entry_price) * self.config.leverage
+                    else:  # Short position (position is negative)
+                        unrealized_pnl += abs(position) * (entry_price - current_price) * self.config.leverage
+        
         return StrategyResult(
             symbol=self.config.symbol,
             mode=self.config.mode,
@@ -701,6 +731,8 @@ class GridStrategyEngine:
             max_drawdown_pct=max_drawdown_pct,
             total_fees=self.total_fees,
             total_funding_fees=self.total_funding_fees,
+            grid_profit=self.grid_profit,
+            unrealized_pnl=unrealized_pnl,
             trades=self.trades,
             equity_curve=self.equity_curve,
             timestamps=self.timestamps,

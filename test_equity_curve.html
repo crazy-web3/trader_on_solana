@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>权益曲线测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .chart-container {
+            min-height: 400px;
+            height: 400px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            margin: 2rem 0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid #e0e0e0;
+        }
+
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 权益曲线显示测试</h1>
+        
+        <div class="controls">
+            <button class="btn btn-primary" onclick="testSimpleChart()">测试简单图表</button>
+            <button class="btn btn-primary" onclick="testEquityCurve()">测试权益曲线</button>
+            <button class="btn btn-secondary" onclick="debugChart()">调试信息</button>
+            <button class="btn btn-secondary" onclick="clearChart()">清空图表</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div class="chart-container" id="chartContainer">
+            <p style="text-align: center; color: #666; margin-top: 150px;">点击按钮开始测试...</p>
+        </div>
+
+        <div class="debug-info" id="debugInfo">
+            <strong>调试信息:</strong><br>
+            Chart.js 状态: <span id="chartStatus">检查中...</span><br>
+            容器元素: <span id="containerStatus">检查中...</span><br>
+            最后操作: <span id="lastAction">无</span>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function updateDebugInfo() {
+            document.getElementById('chartStatus').textContent = typeof Chart !== 'undefined' ? '✅ 已加载' : '❌ 未加载';
+            document.getElementById('containerStatus').textContent = document.getElementById('chartContainer') ? '✅ 存在' : '❌ 不存在';
+        }
+
+        function testSimpleChart() {
+            document.getElementById('lastAction').textContent = '测试简单图表';
+            updateStatus('开始创建简单图表...', 'info');
+            
+            try {
+                if (typeof Chart === 'undefined') {
+                    throw new Error('Chart.js 未加载');
+                }
+
+                const container = document.getElementById('chartContainer');
+                if (!container) {
+                    throw new Error('图表容器不存在');
+                }
+
+                // 清空容器
+                container.innerHTML = '';
+
+                // 创建canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 400;
+                canvas.style.width = '100%';
+                canvas.style.height = '400px';
+                container.appendChild(canvas);
+
+                // 销毁现有图表
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+
+                // 创建简单数据
+                const data = [10000, 10050, 10100, 10080, 10120, 10150, 10200, 10180, 10250];
+                const labels = data.map((_, index) => `Day ${index + 1}`);
+
+                // 创建图表
+                const ctx = canvas.getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '简单测试数据',
+                            data: data,
+                            borderColor: '#007bff',
+                            backgroundColor: '#007bff20',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false
+                            }
+                        }
+                    }
+                });
+
+                updateStatus('✅ 简单图表创建成功！', 'success');
+            } catch (error) {
+                updateStatus(`❌ 简单图表创建失败: ${error.message}`, 'error');
+                console.error('Simple chart error:', error);
+            }
+        }
+
+        function testEquityCurve() {
+            document.getElementById('lastAction').textContent = '测试权益曲线';
+            updateStatus('开始创建权益曲线...', 'info');
+            
+            try {
+                if (typeof Chart === 'undefined') {
+                    throw new Error('Chart.js 未加载');
+                }
+
+                const container = document.getElementById('chartContainer');
+                if (!container) {
+                    throw new Error('图表容器不存在');
+                }
+
+                // 清空容器
+                container.innerHTML = '';
+
+                // 创建canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = 800;
+                canvas.height = 400;
+                canvas.style.width = '100%';
+                canvas.style.height = '400px';
+                container.appendChild(canvas);
+
+                // 销毁现有图表
+                if (chart) {
+                    chart.destroy();
+                    chart = null;
+                }
+
+                // 模拟权益曲线数据
+                const equityData = [
+                    10000, 9990.14, 9992.66, 9990.00, 9990.55, 9991.19, 9993.06, 9996.13, 9994.05, 9991.80,
+                    9989.88, 9988.21, 9988.19, 9984.10, 9987.25, 9987.54, 9988.88, 9986.53, 9990.95, 9991.39,
+                    9987.91, 9987.51, 9989.37, 9989.50, 9989.94, 9987.50, 9989.91, 9991.34, 9997.49, 9994.97
+                ];
+
+                const timestamps = equityData.map((_, index) => {
+                    const date = new Date();
+                    date.setDate(date.getDate() - (equityData.length - index));
+                    return date.toLocaleDateString('zh-CN');
+                });
+
+                // 创建标签（只显示部分）
+                const labels = timestamps.map((ts, index) => {
+                    if (index % Math.ceil(timestamps.length / 8) === 0) {
+                        return ts;
+                    }
+                    return '';
+                });
+
+                // 创建图表
+                const ctx = canvas.getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '权益曲线',
+                            data: equityData,
+                            borderColor: '#00e5ff',
+                            backgroundColor: '#00e5ff20',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: '#333'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#333',
+                                    callback: function(value) {
+                                        return '$' + Math.round(value).toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#333',
+                                    maxTicksLimit: 8
+                                }
+                            }
+                        }
+                    }
+                });
+
+                updateStatus('✅ 权益曲线创建成功！', 'success');
+            } catch (error) {
+                updateStatus(`❌ 权益曲线创建失败: ${error.message}`, 'error');
+                console.error('Equity curve error:', error);
+            }
+        }
+
+        function debugChart() {
+            document.getElementById('lastAction').textContent = '调试图表';
+            console.log('=== Chart Debug Info ===');
+            console.log('Chart.js available:', typeof Chart !== 'undefined');
+            console.log('Container element:', document.getElementById('chartContainer'));
+            console.log('Current chart:', chart);
+            console.log('DOM ready:', document.readyState);
+            console.log('========================');
+            
+            updateStatus('调试信息已输出到控制台', 'info');
+        }
+
+        function clearChart() {
+            document.getElementById('lastAction').textContent = '清空图表';
+            const container = document.getElementById('chartContainer');
+            if (container) {
+                container.innerHTML = '<p style="text-align: center; color: #666; margin-top: 150px;">图表已清空</p>';
+            }
+            
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+            
+            updateStatus('图表已清空', 'info');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDebugInfo();
+            updateStatus('页面加载完成，Chart.js 状态: ' + (typeof Chart !== 'undefined' ? '已加载' : '未加载'), 'info');
+        });
+
+        // 定期更新调试信息
+        setInterval(updateDebugInfo, 1000);
+    </script>
+</body>
+</html>

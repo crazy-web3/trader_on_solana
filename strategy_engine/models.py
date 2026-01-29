@@ -104,6 +104,8 @@ class StrategyResult:
     max_drawdown_pct: float
     total_fees: float = 0.0
     total_funding_fees: float = 0.0
+    grid_profit: float = 0.0  # 网格收益累计（已配对交易的收益）
+    unrealized_pnl: float = 0.0  # 未配对收益累计（未平仓头寸的浮动盈亏）
     trades: List[TradeRecord] = field(default_factory=list)
     equity_curve: List[float] = field(default_factory=list)
     timestamps: List[int] = field(default_factory=list)
@@ -124,6 +126,8 @@ class StrategyResult:
             "max_drawdown_pct": self.max_drawdown_pct,
             "total_fees": self.total_fees,
             "total_funding_fees": self.total_funding_fees,
+            "grid_profit": self.grid_profit,
+            "unrealized_pnl": self.unrealized_pnl,
             "trades": [
                 {
                     "timestamp": t.timestamp,

@@ -170,6 +170,18 @@
             ${{ formatNumber(result.total_funding_fees || 0) }}
           </div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">网格收益累计</div>
+          <div class="stat-value" :class="(result.grid_profit || 0) >= 0 ? 'positive' : 'negative'">
+            ${{ formatNumber(result.grid_profit || 0) }}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">未配对收益累计</div>
+          <div class="stat-value" :class="(result.unrealized_pnl || 0) >= 0 ? 'positive' : 'negative'">
+            ${{ formatNumber(result.unrealized_pnl || 0) }}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -341,7 +353,35 @@ export default {
           gridCount.value = data.calculated_params.grid_count
         }
         
-        updateChart()
+        const chartUpdateSuccess = await updateChart()
+        
+        // Auto-refresh chart twice to ensure proper display
+        if (chartUpdateSuccess) {
+          setTimeout(async () => {
+            console.log('Auto-refresh 1: Updating chart after 500ms')
+            const success1 = await updateChart()
+            if (!success1) {
+              console.warn('Auto-refresh 1 failed, trying again...')
+              setTimeout(() => updateChart(), 200)
+            }
+          }, 500)
+          
+          setTimeout(async () => {
+            console.log('Auto-refresh 2: Updating chart after 1000ms')
+            const success2 = await updateChart()
+            if (!success2) {
+              console.warn('Auto-refresh 2 failed, trying again...')
+              setTimeout(() => updateChart(), 200)
+            }
+          }, 1000)
+        } else {
+          // If initial chart creation failed, try more aggressive refresh
+          console.warn('Initial chart creation failed, using aggressive refresh strategy')
+          setTimeout(() => updateChart(), 1000)
+          setTimeout(() => updateChart(), 2000)
+          setTimeout(() => updateChart(), 3000)
+        }
+        
         message.value = { type: 'success', text: '✅ 回测完成' }
       } catch (error) {
         console.error('Backtest error:', error)
@@ -387,12 +427,12 @@ export default {
       
       if (!equityChartContainer.value) {
         console.error('❌ Container element not found')
-        return
+        return false
       }
 
       if (!result.value?.equity_curve) {
         console.error('❌ No equity curve data')
-        return
+        return false
       }
 
       if (typeof Chart === 'undefined') {
@@ -403,13 +443,17 @@ export default {
             <p>请检查网络连接并刷新页面</p>
           </div>
         `
-        return
+        return false
       }
 
       // 销毁现有图表
       if (chart) {
         console.log('3. Destroying existing chart')
-        chart.destroy()
+        try {
+          chart.destroy()
+        } catch (e) {
+          console.warn('Chart destroy warning:', e)
+        }
         chart = null
       }
 
@@ -438,6 +482,11 @@ export default {
         const timestamps = result.value.timestamps || []
         
         console.log('7. Data length - equity:', equityData.length, 'timestamps:', timestamps.length)
+
+        // 验证数据有效性
+        if (!equityData || equityData.length === 0) {
+          throw new Error('权益曲线数据为空')
+        }
 
         // 创建标签
         let labels = []
@@ -527,6 +576,8 @@ export default {
         
         console.log('11. ✅ Chart created successfully:', chart)
         console.log('=== updateChart Debug End ===')
+        
+        return true
 
       } catch (error) {
         console.error('❌ Chart creation error:', error)
@@ -539,6 +590,7 @@ export default {
             </button>
           </div>
         `
+        return false
       }
     }
 
@@ -566,10 +618,27 @@ export default {
     }
 
     // 强制刷新图表
-    const forceUpdateChart = () => {
+    const forceUpdateChart = async () => {
       console.log('Force updating chart...')
       if (result.value && result.value.equity_curve) {
-        updateChart()
+        const success = await updateChart()
+        
+        // If force update succeeds, do additional refreshes
+        if (success) {
+          setTimeout(() => {
+            console.log('Force refresh 1: Additional update after 300ms')
+            updateChart()
+          }, 300)
+          
+          setTimeout(() => {
+            console.log('Force refresh 2: Additional update after 600ms')
+            updateChart()
+          }, 600)
+        } else {
+          console.error('Force update failed, trying aggressive refresh')
+          setTimeout(() => updateChart(), 500)
+          setTimeout(() => updateChart(), 1000)
+        }
       } else {
         console.error('No data available for chart update')
       }

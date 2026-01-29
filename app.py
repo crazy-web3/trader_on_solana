@@ -707,6 +707,7 @@ def run_backtest():
         funding_rate = float(data.get("funding_rate", 0.0))
         funding_interval = int(data.get("funding_interval", 8))
         auto_calculate_range = data.get("auto_calculate_range", True)
+        entry_price = float(data.get("entry_price", 0.0))  # Entry price parameter
         
         # Validate basic parameters (same as strategy backtest)
         if initial_capital <= 0:
@@ -795,6 +796,7 @@ def run_backtest():
                 leverage=leverage,
                 funding_rate=funding_rate,
                 funding_interval=funding_interval,
+                entry_price=entry_price if entry_price > 0 else valid_klines[0].close,  # Use earliest price if not provided
             )
             
             # Execute strategy
@@ -859,6 +861,7 @@ def run_backtest():
                 "leverage": leverage,
                 "funding_rate": funding_rate,
                 "funding_interval": funding_interval,
+                "entry_price": entry_price if entry_price > 0 else valid_klines[0].close,
                 "auto_calculated": auto_calculate_range,
                 "price_range": upper_price - lower_price
             },

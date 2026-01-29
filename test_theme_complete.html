@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主题切换测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            transition: all 0.3s ease;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .theme-toggle {
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stat-value.positive {
+            color: #28a745;
+        }
+
+        .stat-value.negative {
+            color: #dc3545;
+        }
+
+        /* 深色主题样式 */
+        body.dark-theme {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1419 100%);
+            color: #e1f5fe;
+        }
+
+        body.dark-theme .container {
+            background: linear-gradient(135deg, #0d1421 0%, #1a2332 100%);
+            border: 1px solid #00bcd4;
+            box-shadow: 0 8px 32px rgba(0, 188, 212, 0.2);
+        }
+
+        body.dark-theme .header {
+            border-bottom: 2px solid #00bcd4;
+        }
+
+        body.dark-theme h1 {
+            color: #00e5ff;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
+
+        body.dark-theme .theme-toggle {
+            border: 2px solid #00bcd4;
+            color: #00e5ff;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+        }
+
+        body.dark-theme .theme-toggle:hover {
+            border-color: #00e5ff;
+            background: rgba(0, 229, 255, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.4);
+        }
+
+        body.dark-theme .stat-card {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            border: 1px solid #00bcd4;
+        }
+
+        body.dark-theme .stat-label {
+            color: #81d4fa;
+        }
+
+        body.dark-theme .stat-value {
+            color: #00e5ff;
+            text-shadow: 0 0 5px rgba(0, 229, 255, 0.2);
+        }
+
+        body.dark-theme .stat-value.positive {
+            color: #4caf50;
+        }
+
+        body.dark-theme .stat-value.negative {
+            color: #f44336;
+        }
+
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+        }
+
+        body.dark-theme .test-section {
+            border-color: #00bcd4;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 主题切换测试</h1>
+            <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="切换主题">
+                🌙
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>测试说明</h3>
+            <p>点击右上角的主题切换按钮 🌙 来测试深色主题功能。</p>
+            <p>深色主题应该显示科技蓝配色，包括渐变背景和发光效果。</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">初始资金</div>
+                <div class="stat-value">$10,000.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">最终资金</div>
+                <div class="stat-value">$10,250.00</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">总收益率</div>
+                <div class="stat-value positive">+2.50%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">最大回撤</div>
+                <div class="stat-value negative">-1.20%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">网格收益累计</div>
+                <div class="stat-value positive">$85.97</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">未配对收益累计</div>
+                <div class="stat-value negative">-$32.71</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>功能验证</h3>
+            <ul>
+                <li>✅ 主题切换按钮显示正确图标</li>
+                <li>✅ 深色主题使用科技蓝配色</li>
+                <li>✅ 渐变背景和发光效果</li>
+                <li>✅ 主题状态持久化保存</li>
+                <li>✅ 新增网格收益和未配对收益统计</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let isDarkMode = false;
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const body = document.body;
+            const btn = document.getElementById('themeBtn');
+            
+            if (isDarkMode) {
+                body.classList.add('dark-theme');
+                btn.textContent = '☀️';
+                btn.title = '切换到浅色主题';
+                localStorage.setItem('theme', 'dark');
+                console.log('切换到深色主题');
+            } else {
+                body.classList.remove('dark-theme');
+                btn.textContent = '🌙';
+                btn.title = '切换到深色主题';
+                localStorage.setItem('theme', 'light');
+                console.log('切换到浅色主题');
+            }
+        }
+
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const btn = document.getElementById('themeBtn');
+            
+            if (savedTheme === 'dark') {
+                isDarkMode = true;
+                document.body.classList.add('dark-theme');
+                btn.textContent = '☀️';
+                btn.title = '切换到浅色主题';
+                console.log('加载深色主题');
+            } else {
+                isDarkMode = false;
+                document.body.classList.remove('dark-theme');
+                btn.textContent = '🌙';
+                btn.title = '切换到深色主题';
+                console.log('加载浅色主题');
+            }
+        }
+
+        // 页面加载时初始化主题
+        document.addEventListener('DOMContentLoaded', initTheme);
+    </script>
+</body>
+</html>
