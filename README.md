@@ -108,7 +108,8 @@ trader_on_solana/
 │   ├── test_files/          # Python test scripts
 │   ├── html_demos/          # HTML demo pages
 │   ├── scripts/             # Utility scripts
-│   └── config/              # Configuration files
+│   ├── config/              # Configuration files
+│   └── pic/                 # Demonstration screenshots
 ├── 🐍 app.py                # Main Flask backend server
 ├── 📋 requirements.txt      # Python dependencies
 └── 📖 README.md            # This file
@@ -298,10 +299,40 @@ trader_on_solana/
 
 ## **七、MVP 交付物**
 
-- ✅ 可运行的网格回测 Demo
-- ✅ 参数可配置
-- ✅ 清晰的策略说明文档
-- ✅ 一份学习导向的黑客松展示
+### ✅ 功能演示
+
+我们已经成功交付了一个完整的网格交易机器人 MVP，包含以下核心功能：
+
+#### 1. 📊 市场数据展示
+![市场数据页面](archive/pic/image%20copy%201.png)
+*实时 K 线图表展示，支持多币种、多时间周期，默认 ETH/USDT 4小时线*
+
+#### 2. 📈 策略回测功能
+![策略回测页面](archive/pic/image%20copy%200.png)
+*单策略回测界面，支持做多/做空/中性网格，包含网格收益和未配对收益统计*
+
+#### 3. 🔍 完整回测对比
+![完整回测页面](archive/pic/image%20copy%202.png)
+*三种策略同时回测对比，直观展示不同策略在相同市场条件下的表现*
+
+#### 4. ⚙️ 参数优化功能
+![参数优化页面](archive/pic/image%20copy%203.png)
+*网格搜索参数优化，通过遍历参数组合找到最优策略配置*
+
+### ✅ 核心特性
+
+- **可运行的网格回测 Demo**: 完整的前后端系统，支持实时回测
+- **参数可配置**: 支持价格区间、网格数量、杠杆倍数、资金费率等全面配置
+- **清晰的策略说明文档**: 详细的文档说明和代码注释
+- **学习导向的展示**: 直观的图表和数据展示，便于理解网格策略原理
+
+### ✅ 技术实现
+
+- **前端**: Vue.js + Chart.js，响应式设计，支持深色/浅色主题
+- **后端**: Python Flask，模块化架构，RESTful API
+- **数据源**: Binance API，实时市场数据
+- **策略引擎**: 自研网格交易算法，支持永续合约
+- **回测引擎**: 高性能历史数据回测，支持多策略对比
 
 ---
 

@@ -43,6 +43,13 @@ The root directory has been cleaned up and organized by moving development and t
 - `docker-compose.yml`
 - `Dockerfile.backend`
 - `wallet_whitelist.json`
+- `vite.config.old.js`
+
+### Screenshots → `archive/pic/`
+- `image copy 0.png` - Market Data demonstration
+- `image copy 1.png` - Strategy Backtest demonstration
+- `image copy 2.png` - Full Backtest demonstration
+- `image copy 3.png` - Parameter Optimization demonstration
 
 ## Root Directory (Clean)
 After organization, the root directory contains only essential files:

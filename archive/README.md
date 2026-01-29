@@ -22,6 +22,13 @@ Contains utility scripts:
 - `run.sh` - Unix/Linux startup script
 - `verify_fixes.sh` - Fix verification script
 
+### `/pic/`
+Contains demonstration screenshots:
+- `image copy 0.png` - Market data page demonstration
+- `image copy 1.png` - Strategy backtest page demonstration  
+- `image copy 2.png` - Full backtest comparison demonstration
+- `image copy 3.png` - Parameter optimization demonstration
+
 ### `/config/`
 Contains configuration files:
 - `docker-compose.yml` - Docker composition configuration
