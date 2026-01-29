@@ -86,6 +86,9 @@ class BacktestEngine:
             grid_count=config.grid_count,
             initial_capital=config.initial_capital,
             fee_rate=config.fee_rate,
+            leverage=config.leverage,
+            funding_rate=config.funding_rate,
+            funding_interval=config.funding_interval,
         )
         
         # Run strategy

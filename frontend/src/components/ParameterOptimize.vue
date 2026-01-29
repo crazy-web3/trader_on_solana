@@ -7,8 +7,8 @@
         <div class="form-group">
           <label>币种</label>
           <select v-model="symbol">
-            <option value="BTC/USDT">BTC/USDT</option>
             <option value="ETH/USDT">ETH/USDT</option>
+            <option value="BTC/USDT">BTC/USDT</option>
             <option value="SOL/USDT">SOL/USDT</option>
           </select>
         </div>
@@ -159,16 +159,22 @@
 import { ref } from 'vue'
 
 export default {
-  setup() {
-    const symbol = ref('BTC/USDT')
+  props: {
+    authToken: {
+      type: String,
+      required: true
+    }
+  },
+  setup(props) {
+    const symbol = ref('ETH/USDT')
     const mode = ref('long')
     const initialCapital = ref(10000)
-    const startDate = ref(new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    const startDate = ref(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
     const endDate = ref(new Date().toISOString().split('T')[0])
     const metric = ref('total_return')
     const gridCountRange = ref('5,10,15,20')
-    const lowerPriceRange = ref('38000,40000,42000')
-    const upperPriceRange = ref('58000,60000,62000')
+    const lowerPriceRange = ref('3100,3200,3300')
+    const upperPriceRange = ref('3500,3600,3700')
     const loading = ref(false)
     const result = ref(null)
     const message = ref(null)
@@ -197,7 +203,10 @@ export default {
 
         const response = await fetch('/api/backtest/grid-search', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${props.authToken}`
+          },
           body: JSON.stringify({
             symbol: symbol.value,
             mode: mode.value,

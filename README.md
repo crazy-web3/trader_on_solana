@@ -15,6 +15,9 @@ source venv/bin/activate
 # Install dependencies (if needed)
 pip install -r requirements.txt
 
+# Configure wallet whitelist (optional)
+python manage_whitelist.py add <wallet_address> --nickname "User Name" --role user
+
 # Start backend server
 python3 app.py
 ```
@@ -37,12 +40,20 @@ Frontend runs on: **http://localhost:3000**
 - **Frontend UI**: http://localhost:3000
 - **Backend API**: http://localhost:5001
 - **API Documentation**: Check endpoints in `app.py`
+- **Wallet Authentication**: See `docs/WALLET_AUTH.md` for setup guide
+
+### Wallet Setup
+1. Install a Solana wallet (Phantom or Solflare)
+2. Add your wallet address to the whitelist using `manage_whitelist.py`
+3. Connect your wallet on the frontend to access trading features
 
 ### Available Features
 - 📊 **Market Data**: Real-time K-line data from Binance API
 - 📈 **Strategy Backtest**: Quick backtesting with configurable parameters
 - 🔍 **Full Backtest**: Historical backtesting up to 3 years
 - ⚙️ **Parameter Optimization**: Grid Search for optimal parameters
+- 🔐 **Wallet Authentication**: Solana wallet login with whitelist control
+- 💰 **Perpetual Contracts**: Support for leveraged trading with funding rates
 
 ---
 
@@ -50,7 +61,7 @@ Frontend runs on: **http://localhost:3000**
 
 **赛道**：交易与策略机器人（Trading & Strategy Bots）
 
-**目标**：基于 Solana 链生态，构建一个可回测、可配置的合约网格交易机器人 MVP，用于学习与实践，不以收益承诺为导向。
+**目标**：基于 Solana 链生态，构建一个可回测、可配置的永续合约网格交易机器人 MVP，支持杠杆交易和资金费率计算，用于学习与实践，不以收益承诺为导向。
 
 **核心理念**：
 
@@ -78,15 +89,17 @@ Frontend runs on: **http://localhost:3000**
 
 ### **3. 策略类型**
 
-- 合约网格策略（方向可选）
-    - 做多网格
-    - 做空网格
-    - 中性网格
+- 永续合约网格策略（方向可选）
+    - 做多网格（杠杆1-100倍）
+    - 做空网格（杠杆1-100倍）
+    - 中性网格（双向交易）
 
 ### **4. 成本假设**
 
 - 单边手续费：0.05%
-- 回测中显式计入手续费与滑点（MVP 简化为固定值）
+- 资金费率：默认0%（可配置）
+- 资金费率周期：8小时（可配置1-24小时）
+- 回测中显式计入手续费、资金费用与滑点（MVP 简化为固定值）
 
 ---
 

@@ -26,6 +26,9 @@ class BacktestConfig:
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
         fee_rate: Trading fee rate
+        leverage: Leverage multiplier
+        funding_rate: Funding rate for perpetual contracts
+        funding_interval: Funding interval in hours
     """
     symbol: str
     mode: StrategyMode
@@ -36,6 +39,9 @@ class BacktestConfig:
     start_date: str
     end_date: str
     fee_rate: float = 0.0005
+    leverage: float = 1.0
+    funding_rate: float = 0.0
+    funding_interval: int = 8
 
 
 @dataclass
@@ -53,6 +59,8 @@ class PerformanceMetrics:
         losing_trades: Number of losing trades
         fee_cost: Total fee cost
         fee_ratio: Fee cost as percentage of initial capital
+        funding_cost: Total funding cost
+        funding_ratio: Funding cost as percentage of initial capital
     """
     total_return: float
     annual_return: float
@@ -64,6 +72,8 @@ class PerformanceMetrics:
     losing_trades: int
     fee_cost: float
     fee_ratio: float
+    funding_cost: float = 0.0
+    funding_ratio: float = 0.0
 
 
 @dataclass
@@ -100,6 +110,9 @@ class BacktestResult:
                 "start_date": self.config.start_date,
                 "end_date": self.config.end_date,
                 "fee_rate": self.config.fee_rate,
+                "leverage": self.config.leverage,
+                "funding_rate": self.config.funding_rate,
+                "funding_interval": self.config.funding_interval,
             },
             "metrics": {
                 "total_return": self.metrics.total_return,
@@ -112,6 +125,8 @@ class BacktestResult:
                 "losing_trades": self.metrics.losing_trades,
                 "fee_cost": self.metrics.fee_cost,
                 "fee_ratio": self.metrics.fee_ratio,
+                "funding_cost": self.metrics.funding_cost,
+                "funding_ratio": self.metrics.funding_ratio,
             },
             "initial_capital": self.initial_capital,
             "final_capital": self.final_capital,

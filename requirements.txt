@@ -3,3 +3,5 @@ flask-cors==4.0.0
 pytest==7.4.3
 hypothesis==6.92.1
 requests==2.31.0
+PyNaCl==1.5.0
+base58==2.1.1

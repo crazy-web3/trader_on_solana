@@ -25,6 +25,9 @@ class StrategyConfig:
         grid_count: Number of grid levels
         initial_capital: Initial capital in USDT
         fee_rate: Trading fee rate (default 0.05%)
+        leverage: Leverage multiplier (default 1x)
+        funding_rate: Funding rate for perpetual contracts (default 0%)
+        funding_interval: Funding interval in hours (default 8 hours)
     """
     symbol: str
     mode: StrategyMode
@@ -33,6 +36,9 @@ class StrategyConfig:
     grid_count: int
     initial_capital: float
     fee_rate: float = 0.0005  # 0.05%
+    leverage: float = 1.0  # 1x leverage
+    funding_rate: float = 0.0  # 0% funding rate
+    funding_interval: int = 8  # 8 hours
 
 
 @dataclass
@@ -47,6 +53,8 @@ class TradeRecord:
         grid_level: Grid level index
         fee: Trading fee
         pnl: Profit/loss for this trade
+        funding_fee: Funding fee for this trade
+        position_size: Position size after this trade
     """
     timestamp: int
     price: float
@@ -55,6 +63,8 @@ class TradeRecord:
     grid_level: int
     fee: float
     pnl: float = 0.0
+    funding_fee: float = 0.0
+    position_size: float = 0.0
 
 
 @dataclass
@@ -73,6 +83,8 @@ class StrategyResult:
         win_rate: Win rate percentage
         max_drawdown: Maximum drawdown percentage
         max_drawdown_pct: Maximum drawdown percentage
+        total_fees: Total trading fees paid
+        total_funding_fees: Total funding fees paid
         trades: List of all trades
         equity_curve: Equity curve over time
         timestamps: Timestamps for equity curve
@@ -88,6 +100,8 @@ class StrategyResult:
     win_rate: float
     max_drawdown: float
     max_drawdown_pct: float
+    total_fees: float = 0.0
+    total_funding_fees: float = 0.0
     trades: List[TradeRecord] = field(default_factory=list)
     equity_curve: List[float] = field(default_factory=list)
     timestamps: List[int] = field(default_factory=list)
@@ -106,6 +120,8 @@ class StrategyResult:
             "win_rate": self.win_rate,
             "max_drawdown": self.max_drawdown,
             "max_drawdown_pct": self.max_drawdown_pct,
+            "total_fees": self.total_fees,
+            "total_funding_fees": self.total_funding_fees,
             "trades": [
                 {
                     "timestamp": t.timestamp,
@@ -115,6 +131,8 @@ class StrategyResult:
                     "grid_level": t.grid_level,
                     "fee": t.fee,
                     "pnl": t.pnl,
+                    "funding_fee": t.funding_fee,
+                    "position_size": t.position_size,
                 }
                 for t in self.trades
             ],
