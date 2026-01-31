@@ -175,12 +175,21 @@
           <div class="stat-value" :class="(result.grid_profit || 0) >= 0 ? 'positive' : 'negative'">
             ${{ formatNumber(result.grid_profit || 0) }}
           </div>
+          <div class="stat-hint">已配对交易的收益</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">未配对收益累计</div>
           <div class="stat-value" :class="(result.unrealized_pnl || 0) >= 0 ? 'positive' : 'negative'">
             ${{ formatNumber(result.unrealized_pnl || 0) }}
           </div>
+          <div class="stat-hint">未平仓头寸的浮动盈亏</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">净收益</div>
+          <div class="stat-value" :class="getNetProfit(result) >= 0 ? 'positive' : 'negative'">
+            ${{ formatNumber(getNetProfit(result)) }}
+          </div>
+          <div class="stat-hint">网格收益 + 未配对收益</div>
         </div>
       </div>
     </div>
@@ -214,7 +223,10 @@
               <th>方向</th>
               <th>价格</th>
               <th>数量</th>
+              <th>网格层级</th>
+              <th>持仓大小</th>
               <th>手续费</th>
+              <th>资金费用</th>
               <th>盈亏</th>
             </tr>
           </thead>
@@ -226,9 +238,16 @@
               </td>
               <td>${{ formatNumber(trade.price) }}</td>
               <td>{{ formatNumber(trade.quantity) }}</td>
+              <td>{{ trade.grid_level }}</td>
+              <td :class="trade.position_size > 0 ? 'positive' : trade.position_size < 0 ? 'negative' : ''">
+                {{ formatNumber(trade.position_size) }}
+              </td>
               <td>${{ formatNumber(trade.fee) }}</td>
+              <td :class="trade.funding_fee > 0 ? 'negative' : trade.funding_fee < 0 ? 'positive' : ''">
+                ${{ formatNumber(Math.abs(trade.funding_fee || 0)) }}
+              </td>
               <td :class="trade.pnl >= 0 ? 'positive' : 'negative'">
-                {{ trade.side === 'sell' ? formatNumber(trade.pnl) : '-' }}
+                {{ trade.pnl !== 0 ? '$' + formatNumber(trade.pnl) : '-' }}
               </td>
             </tr>
           </tbody>
@@ -597,6 +616,10 @@ export default {
     const formatNumber = (num) => parseFloat(num).toFixed(2)
     const formatPercent = (num) => (num * 100).toFixed(2) + '%'
     const formatTime = (ms) => new Date(ms).toLocaleString('zh-CN')
+    
+    const getNetProfit = (result) => {
+      return (result.grid_profit || 0) + (result.unrealized_pnl || 0)
+    }
 
     // Auto-update price preview when component mounts
     onMounted(() => {
@@ -648,7 +671,7 @@ export default {
       symbol, mode, lowerPrice, upperPrice, gridCount, initialCapital, days, leverage, fundingRate, fundingInterval,
       entryPrice, autoCalculateRange, priceRangePreview, loadingPreview, selectedRange, selectionChartContainer,
       loading, result, message, equityChartContainer,
-      runBacktest, updatePricePreview, toggleAutoCalculate, formatTime, formatNumber, formatPercent, debugChart, forceUpdateChart
+      runBacktest, updatePricePreview, toggleAutoCalculate, formatTime, formatNumber, formatPercent, getNetProfit, debugChart, forceUpdateChart
     }
   }
 }
@@ -907,6 +930,7 @@ export default {
   padding: 1rem;
   border-radius: 8px;
   text-align: center;
+  position: relative;
 }
 
 .stat-label {
@@ -919,6 +943,13 @@ export default {
   font-size: 1.25rem;
   font-weight: 600;
   color: #333;
+}
+
+.stat-hint {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 0.25rem;
+  font-style: italic;
 }
 
 .stat-value.positive {

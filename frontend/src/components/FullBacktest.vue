@@ -119,8 +119,19 @@
     <!-- 策略对比结果 -->
     <div v-if="result" class="card">
       <h2>📊 策略对比结果</h2>
+      
+      <!-- 最佳策略推荐 -->
+      <div v-if="result.comparison" class="best-strategy-banner">
+        <div class="banner-icon">🏆</div>
+        <div class="banner-content">
+          <h3>最佳策略推荐</h3>
+          <p>{{ getStrategyName(result.comparison.best_strategy) }} - 收益率: {{ formatPercent(result.comparison.returns_comparison[result.comparison.best_strategy]) }}</p>
+        </div>
+      </div>
+      
       <div class="comparison-grid">
-        <div v-for="(strategy, name) in result.strategies" :key="name" class="comparison-card">
+        <div v-for="(strategy, name) in result.strategies" :key="name" 
+             :class="['comparison-card', { 'best-card': result.comparison && name === result.comparison.best_strategy }]">
           <h3>{{ getStrategyName(name) }}</h3>
           <div class="strategy-stats">
             <div class="stat-item">
@@ -134,12 +145,38 @@
               <span class="value">${{ formatNumber(strategy.final_capital) }}</span>
             </div>
             <div class="stat-item">
+              <span class="label">网格收益:</span>
+              <span class="value" :class="(strategy.grid_profit || 0) >= 0 ? 'positive' : 'negative'">
+                ${{ formatNumber(strategy.grid_profit || 0) }}
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="label">未配对收益:</span>
+              <span class="value" :class="(strategy.unrealized_pnl || 0) >= 0 ? 'positive' : 'negative'">
+                ${{ formatNumber(strategy.unrealized_pnl || 0) }}
+              </span>
+            </div>
+            <div class="stat-item">
               <span class="label">交易次数:</span>
               <span class="value">{{ strategy.total_trades }}</span>
             </div>
             <div class="stat-item">
               <span class="label">胜率:</span>
               <span class="value">{{ formatPercent(strategy.win_rate) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">最大回撤:</span>
+              <span class="value negative">{{ formatPercent(strategy.max_drawdown_pct || 0) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">手续费:</span>
+              <span class="value">${{ formatNumber(strategy.total_fees || 0) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">资金费用:</span>
+              <span class="value" :class="(strategy.total_funding_fees || 0) > 0 ? 'negative' : 'positive'">
+                ${{ formatNumber(Math.abs(strategy.total_funding_fees || 0)) }}
+              </span>
             </div>
           </div>
         </div>
@@ -161,6 +198,68 @@
       </div>
       <div class="chart-container" ref="equityChartContainer">
         <p style="text-align: center; color: #666; margin-top: 150px;">正在加载图表...</p>
+      </div>
+    </div>
+    
+    <!-- 性能指标对比 -->
+    <div v-if="result && result.comparison" class="card">
+      <h2>📊 性能指标对比</h2>
+      <div class="metrics-comparison">
+        <div class="metric-row">
+          <div class="metric-label">收益率对比</div>
+          <div class="metric-bars">
+            <div v-for="(value, strategy) in result.comparison.returns_comparison" :key="strategy" class="metric-bar-item">
+              <div class="bar-label">{{ getStrategyName(strategy) }}</div>
+              <div class="bar-container">
+                <div class="bar" :style="getBarStyle(value, result.comparison.returns_comparison)" :class="value >= 0 ? 'positive-bar' : 'negative-bar'">
+                  <span class="bar-value">{{ formatPercent(value) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="metric-row">
+          <div class="metric-label">最终资金对比</div>
+          <div class="metric-bars">
+            <div v-for="(value, strategy) in result.comparison.final_capital_comparison" :key="strategy" class="metric-bar-item">
+              <div class="bar-label">{{ getStrategyName(strategy) }}</div>
+              <div class="bar-container">
+                <div class="bar neutral-bar" :style="getBarStyle(value, result.comparison.final_capital_comparison)">
+                  <span class="bar-value">${{ formatNumber(value) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="metric-row">
+          <div class="metric-label">胜率对比</div>
+          <div class="metric-bars">
+            <div v-for="(value, strategy) in result.comparison.win_rate_comparison" :key="strategy" class="metric-bar-item">
+              <div class="bar-label">{{ getStrategyName(strategy) }}</div>
+              <div class="bar-container">
+                <div class="bar neutral-bar" :style="getBarStyle(value, result.comparison.win_rate_comparison)">
+                  <span class="bar-value">{{ formatPercent(value) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="metric-row">
+          <div class="metric-label">最大回撤对比</div>
+          <div class="metric-bars">
+            <div v-for="(value, strategy) in result.comparison.max_drawdown_comparison" :key="strategy" class="metric-bar-item">
+              <div class="bar-label">{{ getStrategyName(strategy) }}</div>
+              <div class="bar-container">
+                <div class="bar negative-bar" :style="getBarStyle(value, result.comparison.max_drawdown_comparison, true)">
+                  <span class="bar-value">{{ formatPercent(value) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -593,6 +692,25 @@ export default {
       }
       return names[strategy] || strategy
     }
+    
+    const getBarStyle = (value, allValues, inverse = false) => {
+      const values = Object.values(allValues)
+      const maxValue = Math.max(...values.map(v => Math.abs(v)))
+      const minValue = Math.min(...values.map(v => Math.abs(v)))
+      
+      // Calculate percentage width (20% to 100%)
+      let percentage
+      if (maxValue === minValue) {
+        percentage = 100
+      } else {
+        const normalizedValue = Math.abs(value)
+        percentage = 20 + ((normalizedValue - minValue) / (maxValue - minValue)) * 80
+      }
+      
+      return {
+        width: `${percentage}%`
+      }
+    }
 
     const formatNumber = (num) => parseFloat(num).toFixed(2)
     const formatPercent = (num) => (num * 100).toFixed(2) + '%'
@@ -608,7 +726,7 @@ export default {
       symbol, lowerPrice, upperPrice, gridCount, initialCapital, days, leverage, fundingRate, fundingInterval,
       entryPrice, autoCalculateRange, priceRangePreview, loadingPreview,
       loading, result, message, equityChartContainer,
-      runBacktest, updatePricePreview, toggleAutoCalculate, getStrategyName, formatNumber, formatPercent, debugChart, forceUpdateChart
+      runBacktest, updatePricePreview, toggleAutoCalculate, getStrategyName, getBarStyle, formatNumber, formatPercent, debugChart, forceUpdateChart
     }
   }
 }
@@ -798,6 +916,41 @@ export default {
   border-color: #007bff;
 }
 
+.comparison-card.best-card {
+  border-color: #28a745;
+  border-width: 3px;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+}
+
+.best-strategy-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border-radius: 12px;
+  color: white;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.banner-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.banner-content h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+  color: white;
+}
+
+.banner-content p {
+  margin: 0;
+  font-size: 1.1rem;
+  opacity: 0.95;
+}
+
 .comparison-card h3 {
   margin: 0 0 1rem 0;
   color: #333;
@@ -851,6 +1004,85 @@ export default {
   position: relative;
   background: #f8f9fa;
   border: 1px solid #e0e0e0;
+}
+
+.metrics-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.metric-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metric-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.metric-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.metric-bar-item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.bar-label {
+  font-weight: 500;
+  color: #666;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+.bar-container {
+  background: #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 36px;
+  position: relative;
+}
+
+.bar {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.75rem;
+  border-radius: 8px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.bar-value {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+}
+
+.positive-bar {
+  background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+}
+
+.negative-bar {
+  background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+}
+
+.neutral-bar {
+  background: linear-gradient(90deg, #007bff 0%, #0056b3 100%);
 }
 
 @media (max-width: 768px) {

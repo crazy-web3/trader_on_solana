@@ -6,6 +6,10 @@ from typing import List, Optional
 from datetime import datetime
 
 
+# Note: Position class is now defined in strategy_engine.components.position_manager
+# to avoid circular imports and maintain better separation of concerns
+
+
 class StrategyMode(str, Enum):
     """Strategy trading mode."""
     LONG = "long"      # 做多网格

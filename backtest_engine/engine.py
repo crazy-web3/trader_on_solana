@@ -181,20 +181,23 @@ class BacktestEngine:
             Performance metrics
         """
         # Calculate total return
+        # Requirement 6.1: 总收益率 = (最终权益 - 初始资金) / 初始资金
         total_return = (
             (strategy_result.final_capital - config.initial_capital) /
             config.initial_capital
         )
         
         # Calculate annualized return
+        # Requirement 6.2: 年化收益率 = 总收益率 × (365天 / 回测天数)
         days = (end_date - start_date).days
-        years = days / 365.0
         annual_return = (
-            (1 + total_return) ** (1 / years) - 1
-            if years > 0 else 0
+            total_return * (365.0 / days)
+            if days > 0 else 0
         )
         
         # Calculate max drawdown
+        # Requirement 6.3: 最大回撤 = (峰值权益 - 最低权益) / 峰值权益
+        # This is calculated in the strategy engine using the equity curve
         max_drawdown = strategy_result.max_drawdown_pct
         
         # Calculate Sharpe ratio (simplified)
@@ -232,11 +235,13 @@ class BacktestEngine:
     def _calculate_sharpe_ratio(equity_curve: List[float]) -> float:
         """Calculate Sharpe ratio.
         
+        Requirement 6.4: 夏普比率 = (平均日收益率 / 日收益率标准差) × sqrt(252)
+        
         Args:
             equity_curve: Equity curve values
             
         Returns:
-            Sharpe ratio
+            Sharpe ratio (annualized)
         """
         if len(equity_curve) < 2:
             return 0.0
@@ -244,22 +249,32 @@ class BacktestEngine:
         # Calculate daily returns
         returns = []
         for i in range(1, len(equity_curve)):
+            if equity_curve[i-1] == 0:
+                # Handle edge case of zero equity - cannot calculate return
+                return 0.0
             ret = (equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1]
             returns.append(ret)
         
         if not returns:
             return 0.0
         
-        # Calculate mean and std dev
+        # Calculate mean of daily returns
         mean_return = sum(returns) / len(returns)
-        variance = sum((r - mean_return) ** 2 for r in returns) / len(returns)
+        
+        # Calculate sample standard deviation (using n-1 for unbiased estimator)
+        if len(returns) == 1:
+            # Cannot calculate std dev with only 1 return
+            return 0.0
+        
+        variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
         std_dev = math.sqrt(variance)
         
-        # Calculate Sharpe ratio (assuming 0% risk-free rate)
+        # Handle zero standard deviation (all returns are identical)
         if std_dev == 0:
             return 0.0
         
-        # Annualize (252 trading days)
+        # Calculate annualized Sharpe ratio
+        # Multiply by sqrt(252) to annualize (252 trading days per year)
         sharpe_ratio = (mean_return / std_dev) * math.sqrt(252)
         
         return sharpe_ratio
