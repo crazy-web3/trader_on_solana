@@ -334,6 +334,110 @@ def get_klines():
         return jsonify({"error": "Internal server error"}), 500
 
 
+@app.route("/api/klines/export", methods=["GET"])
+def export_klines_csv():
+    """Export K-line data as CSV file.
+    
+    Query parameters:
+    - symbol: Trading pair (e.g., "BTC/USDT")
+    - interval: Time interval (e.g., "1h")
+    - days: Number of days to fetch (default: 7)
+    """
+    try:
+        from flask import make_response
+        import io
+        import csv
+        
+        symbol = request.args.get("symbol", "BTC/USDT")
+        interval = request.args.get("interval", "1h")
+        days = int(request.args.get("days", 7))
+        
+        # Validate parameters
+        adapter.validate_parameters(symbol, interval, 0, 1)
+        
+        # Calculate time range
+        end_time = int(datetime.now().timestamp() * 1000)
+        start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+        
+        # Check cache first
+        cache_key = f"{symbol}:{interval}:{start_time}:{end_time}"
+        cached_data = cache.get(cache_key)
+        
+        if cached_data is not None:
+            logger.info(f"Cache hit for {cache_key}")
+            klines = cached_data
+        else:
+            logger.info(f"Fetching data for {symbol} {interval}")
+            # Fetch from data source
+            klines = adapter.fetch_kline_data(symbol, interval, start_time, end_time)
+            
+            # Validate data
+            validation_results = validator.validate_batch(klines)
+            invalid_count = sum(1 for r in validation_results if not r.isValid)
+            
+            if invalid_count > 0:
+                logger.warning(f"Found {invalid_count} invalid K-lines")
+            
+            # Filter valid data
+            valid_klines = [
+                kline for kline, result in zip(klines, validation_results)
+                if result.isValid
+            ]
+            
+            # Cache the data
+            cache.set(cache_key, valid_klines)
+            klines = valid_klines
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'Timestamp',
+            'Date',
+            'Open',
+            'High',
+            'Low',
+            'Close',
+            'Volume'
+        ])
+        
+        # Write data
+        for kline in klines:
+            date_str = datetime.fromtimestamp(kline.timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
+            writer.writerow([
+                kline.timestamp,
+                date_str,
+                kline.open,
+                kline.high,
+                kline.low,
+                kline.close,
+                kline.volume
+            ])
+        
+        # Create response
+        output.seek(0)
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename={symbol.replace("/", "_")}_{interval}_{days}d.csv'
+        
+        return response
+    
+    except ParameterError as e:
+        logger.error(f"Parameter error: {e}")
+        return jsonify({"error": str(e)}), 400
+    except ValidationError as e:
+        logger.error(f"Validation error: {e}")
+        return jsonify({"error": str(e)}), 400
+    except DataSourceError as e:
+        logger.error(f"Data source error: {e}")
+        return jsonify({"error": str(e)}), 503
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
 @app.route("/api/cache/stats", methods=["GET"])
 def get_cache_stats():
     """Get cache statistics."""

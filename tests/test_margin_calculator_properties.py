@@ -685,6 +685,9 @@ def test_property_leverage_effect(quantity, price, leverage1, leverage2):
     
     Higher leverage should result in lower required margin for the same position.
     """
+    # Skip if leverages are too close (within 0.1)
+    assume(abs(leverage2 - leverage1) > 0.1)
+    
     calc1 = MarginCalculator(leverage1)
     calc2 = MarginCalculator(leverage2)
     

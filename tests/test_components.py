@@ -204,10 +204,10 @@ class TestOrderManager:
         
         manager.place_counter_order(filled_order, StrategyMode.NEUTRAL)
         
-        # NEUTRAL mode uses symmetric grid: grid_count - 1 - grid_idx
-        # For grid 5 with grid_count=11: symmetric_grid = 11 - 1 - 5 = 5
-        # So it should place sell order at grid 5 (symmetric to itself)
-        expected_grid = config.grid_count - 1 - 5
+        # NEUTRAL mode now uses adjacent grid logic (fixed from symmetric)
+        # Buy at grid 5 should place sell order at grid 6 (next higher grid)
+        # This allows for quick profit-taking when price rises one grid level
+        expected_grid = 5 + 1  # Adjacent grid (上一网格)
         assert expected_grid in manager.pending_orders
         assert manager.pending_orders[expected_grid].side == "sell"
 

@@ -33,6 +33,9 @@
         <button class="btn-primary" @click="fetchKlines" :disabled="loading">
           {{ loading ? '加载中...' : '🔍 查询数据' }}
         </button>
+        <button class="btn-secondary" @click="downloadCSV" :disabled="!klines.length">
+          📥 下载CSV
+        </button>
         <button class="btn-secondary" @click="clearCache">🗑️ 清空缓存</button>
       </div>
       <div v-if="message" :class="['message', message.type, 'active']">
@@ -343,6 +346,28 @@ export default {
       }
     }
 
+    const downloadCSV = async () => {
+      try {
+        message.value = { type: 'info', text: '📥 正在准备下载...' }
+        
+        // 构建下载URL
+        const url = `/api/klines/export?symbol=${symbol.value}&interval=${interval.value}&days=${days.value}`
+        
+        // 创建一个隐藏的a标签来触发下载
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${symbol.value.replace('/', '_')}_${interval.value}_${days.value}d.csv`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        message.value = { type: 'success', text: '✅ CSV文件下载已开始' }
+      } catch (error) {
+        console.error('Download error:', error)
+        message.value = { type: 'error', text: `❌ 下载失败: ${error.message}` }
+      }
+    }
+
     const formatTime = (ms) => {
       return new Date(ms).toLocaleString('zh-CN')
     }
@@ -372,6 +397,7 @@ export default {
       chartContainer,
       fetchKlines,
       clearCache,
+      downloadCSV,
       formatTime,
       formatNumber
     }

@@ -56,10 +56,10 @@ class BacktestEngine:
         start_time = int(start_date.timestamp() * 1000)
         end_time = int(end_date.timestamp() * 1000)
         
-        # Fetch K-line data
+        # Fetch K-line data using configured timeframe
         klines = self.adapter.fetch_kline_data(
             symbol=config.symbol,
-            interval="1d",  # Use daily data for long-term backtest
+            interval=config.timeframe,  # Use configured timeframe
             start_time=start_time,
             end_time=end_time,
         )

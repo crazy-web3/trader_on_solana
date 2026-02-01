@@ -12,6 +12,62 @@ class StrategyMode(str, Enum):
     NEUTRAL = "neutral"
 
 
+class Timeframe(str, Enum):
+    """Supported timeframes for backtesting.
+    
+    Attributes:
+        M1: 1 minute
+        M5: 5 minutes
+        M15: 15 minutes
+        H1: 1 hour
+        H4: 4 hours
+        D1: 1 day
+    """
+    M1 = "1m"
+    M5 = "5m"
+    M15 = "15m"
+    H1 = "1h"
+    H4 = "4h"
+    D1 = "1d"
+    
+    @property
+    def milliseconds(self) -> int:
+        """Return the timeframe duration in milliseconds."""
+        mapping = {
+            "1m": 60_000,
+            "5m": 300_000,
+            "15m": 900_000,
+            "1h": 3_600_000,
+            "4h": 14_400_000,
+            "1d": 86_400_000,
+        }
+        return mapping[self.value]
+    
+    @property
+    def seconds(self) -> int:
+        """Return the timeframe duration in seconds."""
+        return self.milliseconds // 1000
+    
+    @staticmethod
+    def recommend(strategy_type: str) -> 'Timeframe':
+        """Recommend a timeframe based on strategy type.
+        
+        Args:
+            strategy_type: Type of strategy (scalping, day_trading, swing, position)
+            
+        Returns:
+            Recommended timeframe
+        """
+        recommendations = {
+            "scalping": Timeframe.M1,
+            "day_trading": Timeframe.M5,
+            "intraday": Timeframe.M15,
+            "swing": Timeframe.H1,
+            "position": Timeframe.D1,
+        }
+        return recommendations.get(strategy_type, Timeframe.D1)
+
+
 @dataclass
 class BacktestConfig:
     """Backtest configuration.
@@ -29,6 +85,8 @@ class BacktestConfig:
         leverage: Leverage multiplier
         funding_rate: Funding rate for perpetual contracts
         funding_interval: Funding interval in hours
+        timeframe: Timeframe for backtesting (default: 1d)
+        slippage_config: Slippage simulation configuration (optional)
     """
     symbol: str
     mode: StrategyMode
@@ -42,6 +100,8 @@ class BacktestConfig:
     leverage: float = 1.0
     funding_rate: float = 0.0
     funding_interval: int = 8
+    timeframe: Timeframe = Timeframe.D1
+    slippage_config: Optional['SlippageConfig'] = None
 
 
 @dataclass
@@ -61,6 +121,9 @@ class PerformanceMetrics:
         fee_ratio: Fee cost as percentage of initial capital
         funding_cost: Total funding cost
         funding_ratio: Funding cost as percentage of initial capital
+        total_slippage_cost: Total slippage cost
+        slippage_impact_pct: Slippage impact as percentage of initial capital
+        avg_slippage_bps: Average slippage in basis points
     """
     total_return: float
     annual_return: float
@@ -74,6 +137,9 @@ class PerformanceMetrics:
     fee_ratio: float
     funding_cost: float = 0.0
     funding_ratio: float = 0.0
+    total_slippage_cost: float = 0.0
+    slippage_impact_pct: float = 0.0
+    avg_slippage_bps: float = 0.0
 
 
 @dataclass
@@ -113,6 +179,7 @@ class BacktestResult:
                 "leverage": self.config.leverage,
                 "funding_rate": self.config.funding_rate,
                 "funding_interval": self.config.funding_interval,
+                "timeframe": self.config.timeframe.value,
             },
             "metrics": {
                 "total_return": self.metrics.total_return,
@@ -127,6 +194,9 @@ class BacktestResult:
                 "fee_ratio": self.metrics.fee_ratio,
                 "funding_cost": self.metrics.funding_cost,
                 "funding_ratio": self.metrics.funding_ratio,
+                "total_slippage_cost": self.metrics.total_slippage_cost,
+                "slippage_impact_pct": self.metrics.slippage_impact_pct,
+                "avg_slippage_bps": self.metrics.avg_slippage_bps,
             },
             "initial_capital": self.initial_capital,
             "final_capital": self.final_capital,

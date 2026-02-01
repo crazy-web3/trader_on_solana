@@ -33,6 +33,7 @@ class StrategyConfig:
         funding_rate: Funding rate for perpetual contracts (default 0%)
         funding_interval: Funding interval in hours (default 8 hours)
         entry_price: Entry price (earliest price in time series)
+        use_grid_crossing_logic: Use grid crossing logic for accurate profit calculation (default True)
     """
     symbol: str
     mode: StrategyMode
@@ -45,6 +46,7 @@ class StrategyConfig:
     funding_rate: float = 0.0  # 0% funding rate
     funding_interval: int = 8  # 8 hours
     entry_price: float = 0.0  # Entry price (earliest price in time series)
+    use_grid_crossing_logic: bool = True  # Use grid crossing logic for accurate profit calculation
 
 
 @dataclass

@@ -73,6 +73,7 @@ class GridStrategyEngine:
         self.grid_positions: Dict[int, float] = {}
         self.capital_per_grid = config.initial_capital / (config.grid_count * 2)
         self.last_funding_time = 0
+        self.last_price = None  # Track last price for grid crossing detection
     
     def _validate_config(self, config: StrategyConfig) -> None:
         """Validate strategy configuration."""
@@ -145,6 +146,28 @@ class GridStrategyEngine:
         # Initialize grid if not done yet
         if not self.pending_orders:
             self._place_initial_orders(kline.close)
+            self.last_price = kline.close
+        
+        # Choose between grid crossing logic and order-based logic
+        if self.config.use_grid_crossing_logic:
+            # New logic: Detect and execute grid crossings for accurate profit calculation
+            if self.last_price is not None:
+                crossed_grids = self._detect_crossed_grids(self.last_price, kline)
+                for grid_info in crossed_grids:
+                    self._execute_grid_trade(grid_info, kline)
+            
+            # Update last price
+            self.last_price = kline.close
+        else:
+            # Old logic: Order-based trading (for backward compatibility)
+            # Check for order fills using OrderManager
+            filled_orders = self.order_manager.check_order_fills(kline)
+            
+            # Process each filled order
+            for order in filled_orders:
+                self._fill_order(order, kline)
+                # Place counter order after fill
+                self._place_counter_order(order, kline)
         
         # Process funding fees using FundingFeeCalculator
         if self.funding_fee_calculator.should_settle_funding(kline.timestamp):
@@ -161,15 +184,6 @@ class GridStrategyEngine:
             
             # Update funding settlement time
             self.funding_fee_calculator.settle_funding(kline.timestamp)
-        
-        # Check for order fills using OrderManager
-        filled_orders = self.order_manager.check_order_fills(kline)
-        
-        # Process each filled order
-        for order in filled_orders:
-            self._fill_order(order, kline)
-            # Place counter order after fill
-            self._place_counter_order(order, kline)
         
         # Update equity curve using PnLCalculator
         unrealized_pnl = self.pnl_calculator.calculate_unrealized_pnl(
@@ -314,6 +328,164 @@ class GridStrategyEngine:
         # Sync pending_orders for backward compatibility
         self.pending_orders = self.order_manager.get_pending_orders()
     
+    def _find_grid_index(self, price: float) -> int:
+        """Find the grid index for a given price.
+        
+        Args:
+            price: Price to find grid index for
+            
+        Returns:
+            Grid index (0-based)
+        """
+        if price <= self.config.lower_price:
+            return 0
+        if price >= self.config.upper_price:
+            return self.config.grid_count - 1
+        
+        # Calculate which grid the price falls into
+        idx = int((price - self.config.lower_price) / self.grid_gap)
+        return min(idx, self.config.grid_count - 1)
+    
+    def _detect_crossed_grids(self, prev_price: float, kline: KlineData) -> List[Dict]:
+        """Detect which grids were crossed by price movement.
+        
+        Grid intervals are defined as [grid_i, grid_i+1) (left-closed, right-open).
+        When price moves, we detect which grid intervals were crossed.
+        
+        Args:
+            prev_price: Previous price
+            kline: Current K-line data
+            
+        Returns:
+            List of crossed grid info dicts
+        """
+        crossed = []
+        
+        # Find which grid intervals the prices fall into
+        # Use searchsorted to find the interval: price in [grid_i, grid_i+1)
+        prev_grid_idx = self._find_grid_interval(prev_price)
+        low_grid_idx = self._find_grid_interval(kline.low)
+        high_grid_idx = self._find_grid_interval(kline.high)
+        
+        # Price moved down: from prev_grid_idx to low_grid_idx
+        if low_grid_idx < prev_grid_idx:
+            # Crossed grids from prev_grid_idx-1 down to low_grid_idx
+            for idx in range(prev_grid_idx - 1, low_grid_idx - 1, -1):
+                if idx >= 0 and idx < self.config.grid_count - 1:
+                    # Trade in grid idx: sell at grid_prices[idx+1], buy at grid_prices[idx]
+                    crossed.append({
+                        'grid_idx': idx,
+                        'direction': 'down',
+                        'entry_price': self.strategy.grid_prices[idx + 1],
+                        'exit_price': self.strategy.grid_prices[idx],
+                        'timestamp': kline.timestamp
+                    })
+        
+        # Price moved up: from prev_grid_idx to high_grid_idx
+        if high_grid_idx > prev_grid_idx:
+            # Crossed grids from prev_grid_idx up to high_grid_idx-1
+            for idx in range(prev_grid_idx, high_grid_idx):
+                if idx >= 0 and idx < self.config.grid_count - 1:
+                    # Trade in grid idx: buy at grid_prices[idx], sell at grid_prices[idx+1]
+                    crossed.append({
+                        'grid_idx': idx,
+                        'direction': 'up',
+                        'entry_price': self.strategy.grid_prices[idx],
+                        'exit_price': self.strategy.grid_prices[idx + 1],
+                        'timestamp': kline.timestamp
+                    })
+        
+        return crossed
+    
+    def _find_grid_interval(self, price: float) -> int:
+        """Find which grid interval a price falls into.
+        
+        Grid intervals are [grid_0, grid_1), [grid_1, grid_2), ..., [grid_n-2, grid_n-1]
+        The last interval [grid_n-2, grid_n-1] is closed on both ends.
+        Returns the index of the lower bound of the interval.
+        
+        Args:
+            price: Price to find interval for
+            
+        Returns:
+            Grid interval index (0 to grid_count-2)
+        """
+        if price <= self.config.lower_price:
+            return 0
+        if price >= self.config.upper_price:
+            # Price at or above upper bound belongs to the last interval
+            return self.config.grid_count - 2
+        
+        # Find which interval: [grid_i, grid_i+1)
+        idx = int((price - self.config.lower_price) / self.grid_gap)
+        
+        # Ensure we don't exceed the last interval
+        if idx >= self.config.grid_count - 1:
+            idx = self.config.grid_count - 2
+        
+        return idx
+    
+    def _execute_grid_trade(self, grid_info: Dict, kline: KlineData) -> None:
+        """Execute a grid trade for a crossed grid.
+        
+        Args:
+            grid_info: Grid crossing information
+            kline: K-line data
+        """
+        direction = grid_info['direction']
+        entry_price = grid_info['entry_price']
+        exit_price = grid_info['exit_price']
+        
+        # Calculate quantity based on grid capital
+        # For grid crossing logic, use full capital per grid (not divided by 2)
+        grid_capital = self.config.initial_capital / self.config.grid_count
+        quantity = grid_capital / entry_price * self.config.leverage
+        
+        # Calculate profit based on strategy mode
+        profit = 0.0
+        should_trade = False
+        
+        if self.config.mode == StrategyMode.SHORT:
+            # Short grid: profit when price goes down
+            if direction == 'down':
+                profit = (entry_price - exit_price) * quantity
+                should_trade = True
+        
+        elif self.config.mode == StrategyMode.LONG:
+            # Long grid: profit when price goes up
+            if direction == 'up':
+                profit = (exit_price - entry_price) * quantity
+                should_trade = True
+        
+        elif self.config.mode == StrategyMode.NEUTRAL:
+            # Neutral grid: profit from any movement
+            profit = abs(exit_price - entry_price) * quantity
+            should_trade = True
+        
+        if should_trade and profit > 0:
+            # Calculate fees (open + close)
+            fee = (entry_price * quantity * self.config.fee_rate + 
+                   exit_price * quantity * self.config.fee_rate)
+            profit -= fee
+            
+            # Update capital and metrics
+            self.capital += profit
+            self.grid_profit += profit
+            self.total_fees += fee
+            
+            # Record trade
+            trade = TradeRecord(
+                timestamp=grid_info['timestamp'],
+                price=exit_price,
+                quantity=quantity,
+                side='buy' if direction == 'down' else 'sell',
+                grid_level=grid_info['grid_idx'],
+                fee=fee,
+                pnl=profit,
+                funding_fee=0.0,
+                position_size=0.0  # Grid trades are complete cycles
+            )
+            self.trades.append(trade)
 
 
     def _calculate_result(self) -> StrategyResult:

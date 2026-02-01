@@ -442,6 +442,7 @@ class TestGridStrategyEngineIntegration:
             grid_count=11,
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )

@@ -403,12 +403,12 @@ def test_property_counter_order_placement_correctness(config, mode):
                 f"SHORT mode: Counter order should be sell, got {counter_order.side}"
     
     elif mode == StrategyMode.NEUTRAL:
-        # NEUTRAL: Buy fills -> sell at symmetric grid (grid_count - 1 - grid_idx)
-        # This is the new symmetric grid strategy for NEUTRAL mode
-        expected_counter_idx = config.grid_count - 1 - test_grid_idx
-        if expected_counter_idx < config.grid_count and expected_counter_idx >= 0:
+        # NEUTRAL: Buy fills -> sell at adjacent grid up (grid_idx + 1)
+        # Fixed from symmetric grid to adjacent grid for quick profit-taking
+        expected_counter_idx = test_grid_idx + 1
+        if expected_counter_idx < config.grid_count:
             assert expected_counter_idx in manager.pending_orders, \
-                f"NEUTRAL mode: Buy fill should place sell order at symmetric grid {expected_counter_idx}"
+                f"NEUTRAL mode: Buy fill should place sell order at adjacent grid {expected_counter_idx}"
             counter_order = manager.pending_orders[expected_counter_idx]
             assert counter_order.side == "sell", \
                 f"NEUTRAL mode: Counter order should be sell, got {counter_order.side}"
@@ -446,12 +446,12 @@ def test_property_counter_order_placement_correctness(config, mode):
                 f"SHORT mode: Counter order should be buy, got {counter_order.side}"
     
     elif mode == StrategyMode.NEUTRAL:
-        # NEUTRAL: Sell fills -> buy at symmetric grid (grid_count - 1 - grid_idx)
-        # This is the new symmetric grid strategy for NEUTRAL mode
-        expected_counter_idx = config.grid_count - 1 - test_grid_idx
-        if expected_counter_idx >= 0 and expected_counter_idx < config.grid_count:
+        # NEUTRAL: Sell fills -> buy at adjacent grid down (grid_idx - 1)
+        # Fixed from symmetric grid to adjacent grid for quick profit-taking
+        expected_counter_idx = test_grid_idx - 1
+        if expected_counter_idx >= 0:
             assert expected_counter_idx in manager.pending_orders, \
-                f"NEUTRAL mode: Sell fill should place buy order at symmetric grid {expected_counter_idx}"
+                f"NEUTRAL mode: Sell fill should place buy order at adjacent grid {expected_counter_idx}"
             counter_order = manager.pending_orders[expected_counter_idx]
             assert counter_order.side == "buy", \
                 f"NEUTRAL mode: Counter order should be buy, got {counter_order.side}"

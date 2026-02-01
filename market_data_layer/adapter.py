@@ -1,7 +1,7 @@
 """Data source adapter module for fetching K-line data."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Union
 import requests
 import time
 from datetime import datetime, timedelta
@@ -38,7 +38,7 @@ class DataSourceAdapter(ABC):
     def fetch_kline_data(
         self,
         symbol: str,
-        interval: str,
+        interval: Union[str, 'Timeframe'],  # Support both str and Timeframe
         start_time: int,
         end_time: int,
     ) -> List[KlineData]:
@@ -46,7 +46,7 @@ class DataSourceAdapter(ABC):
         
         Args:
             symbol: Trading pair symbol (e.g., "BTC/USDT")
-            interval: Time interval (e.g., "1h")
+            interval: Time interval (e.g., "1h") or Timeframe enum
             start_time: Start time in milliseconds
             end_time: End time in milliseconds
             
@@ -60,10 +60,29 @@ class DataSourceAdapter(ABC):
         """
         pass
     
+    def _normalize_interval(self, interval: Union[str, 'Timeframe']) -> str:
+        """Normalize interval to string format.
+        
+        Args:
+            interval: Time interval as string or Timeframe enum
+            
+        Returns:
+            Interval as string (e.g., "1h")
+        """
+        # Import here to avoid circular dependency
+        try:
+            from backtest_engine.models import Timeframe
+            if isinstance(interval, Timeframe):
+                return interval.value
+        except ImportError:
+            pass
+        
+        return str(interval)
+    
     def validate_parameters(
         self,
         symbol: str,
-        interval: str,
+        interval: Union[str, 'Timeframe'],
         start_time: int,
         end_time: int,
     ) -> None:
@@ -71,13 +90,16 @@ class DataSourceAdapter(ABC):
         
         Args:
             symbol: Trading pair symbol
-            interval: Time interval
+            interval: Time interval (string or Timeframe enum)
             start_time: Start time in milliseconds
             end_time: End time in milliseconds
             
         Raises:
             ParameterError: If any parameter is invalid
         """
+        # Normalize interval to string
+        interval_str = self._normalize_interval(interval)
+        
         # Validate symbol
         if symbol not in self.SUPPORTED_SYMBOLS:
             raise ParameterError(
@@ -86,9 +108,9 @@ class DataSourceAdapter(ABC):
             )
         
         # Validate interval
-        if interval not in self.SUPPORTED_INTERVALS:
+        if interval_str not in self.SUPPORTED_INTERVALS:
             raise ParameterError(
-                f"Unsupported interval: {interval}. "
+                f"Unsupported interval: {interval_str}. "
                 f"Supported intervals: {', '.join(self.SUPPORTED_INTERVALS)}"
             )
         
@@ -130,7 +152,7 @@ class MockDataSourceAdapter(DataSourceAdapter):
     def fetch_kline_data(
         self,
         symbol: str,
-        interval: str,
+        interval: Union[str, 'Timeframe'],
         start_time: int,
         end_time: int,
     ) -> List[KlineData]:
@@ -138,7 +160,7 @@ class MockDataSourceAdapter(DataSourceAdapter):
         
         Args:
             symbol: Trading pair symbol
-            interval: Time interval
+            interval: Time interval (string or Timeframe enum)
             start_time: Start time in milliseconds
             end_time: End time in milliseconds
             
@@ -151,11 +173,14 @@ class MockDataSourceAdapter(DataSourceAdapter):
         # Validate parameters
         self.validate_parameters(symbol, interval, start_time, end_time)
         
+        # Normalize interval to string
+        interval_str = self._normalize_interval(interval)
+        
         # Generate mock data
         klines = []
         
         # Determine interval in milliseconds
-        interval_ms = self._get_interval_ms(interval)
+        interval_ms = self._get_interval_ms(interval_str)
         
         # Generate K-line data for each interval
         current_time = start_time
@@ -245,7 +270,7 @@ class BinanceDataSourceAdapter(DataSourceAdapter):
     def fetch_kline_data(
         self,
         symbol: str,
-        interval: str,
+        interval: Union[str, 'Timeframe'],
         start_time: int,
         end_time: int,
     ) -> List[KlineData]:
@@ -253,7 +278,7 @@ class BinanceDataSourceAdapter(DataSourceAdapter):
         
         Args:
             symbol: Trading pair symbol (e.g., "BTC/USDT")
-            interval: Time interval (e.g., "1h")
+            interval: Time interval (e.g., "1h") or Timeframe enum
             start_time: Start time in milliseconds
             end_time: End time in milliseconds
             
@@ -268,13 +293,16 @@ class BinanceDataSourceAdapter(DataSourceAdapter):
         # Validate parameters
         self.validate_parameters(symbol, interval, start_time, end_time)
         
+        # Normalize interval to string
+        interval_str = self._normalize_interval(interval)
+        
         try:
             # Convert symbol and interval
             binance_symbol = self.SYMBOL_MAP.get(symbol)
-            binance_interval = self.INTERVAL_MAP.get(interval)
+            binance_interval = self.INTERVAL_MAP.get(interval_str)
             
             if not binance_symbol or not binance_interval:
-                raise ParameterError(f"Unsupported symbol or interval: {symbol} {interval}")
+                raise ParameterError(f"Unsupported symbol or interval: {symbol} {interval_str}")
             
             # Fetch data from Binance
             klines = []
@@ -322,7 +350,7 @@ class BinanceDataSourceAdapter(DataSourceAdapter):
                 if len(data) < 1000:
                     break
                 
-                current_start = int(data[-1][0]) + self._get_interval_ms(interval)
+                current_start = int(data[-1][0]) + self._get_interval_ms(interval_str)
                 
                 # Add small delay to avoid rate limiting
                 time.sleep(0.1)

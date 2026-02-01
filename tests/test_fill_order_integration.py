@@ -19,6 +19,7 @@ class TestFillOrderIntegration:
             grid_count=5,
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )
@@ -72,6 +73,7 @@ class TestFillOrderIntegration:
             grid_count=10,  # More grids to avoid multiple triggers
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )
@@ -146,6 +148,7 @@ class TestFillOrderIntegration:
             grid_count=5,
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )
@@ -189,6 +192,7 @@ class TestFillOrderIntegration:
             grid_count=5,
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )
@@ -245,7 +249,8 @@ class TestFillOrderIntegration:
             upper_price=50000.0,
             grid_count=5,
             initial_capital=100.0,  # Very small capital
-            leverage=1.0,  # Low leverage
+            leverage=1.0,
+            use_grid_crossing_logic=False,  # Low leverage
             fee_rate=0.001,
             funding_rate=0.0001,
         )
@@ -292,6 +297,7 @@ class TestFillOrderIntegration:
             grid_count=5,
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )
@@ -340,6 +346,7 @@ class TestFillOrderIntegration:
             grid_count=5,
             initial_capital=10000.0,
             leverage=2.0,
+            use_grid_crossing_logic=False,
             fee_rate=0.001,
             funding_rate=0.0001,
         )

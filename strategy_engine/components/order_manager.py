@@ -110,14 +110,14 @@ class OrderManager:
                     self._add_order(sell_order)
                     
             elif strategy_mode == StrategyMode.SHORT:
-                # 做空网格: 当前价以上挂卖单，以下不挂单
+                # 做空网格: 当前价及以上挂卖单，以下不挂单
                 # 目标：高卖低买，建立空头仓位
                 # 初始状态只在高价位挂卖单等待开空仓
-                if grid_price > current_price:
-                    # 当前价以上挂卖单（建立空头）
+                if grid_price >= current_price:
+                    # 当前价及以上挂卖单（建立空头）
                     sell_order = GridOrder(i, grid_price, "sell", quantity)
                     self._add_order(sell_order)
-                # 当前价及以下不挂单（等卖单成交后再挂买单平仓）
+                # 当前价以下不挂单（等卖单成交后再挂买单平仓）
                     
             elif strategy_mode == StrategyMode.NEUTRAL:
                 # 中性网格: 双向交易，不持有方向性仓位
@@ -217,26 +217,26 @@ class OrderManager:
                     self._add_order(counter_order)
                         
         elif strategy_mode == StrategyMode.NEUTRAL:
-            # 中性网格：目标是保持净仓位接近零，通过对称交易获利
-            # 关键区别：在对称网格挂反向订单
-            # 对称逻辑：如果在网格i成交，则在网格(grid_count-1-i)挂反向订单
-            # 这样可以在价格波动中双向获利，同时保持仓位平衡
+            # 中性网格：目标是保持净仓位接近零，通过快速平仓获利
+            # 核心原则：在相邻网格挂反向订单，快速平仓赚取网格间差价
+            # 修复：使用相邻网格而非对称网格
             if filled_order.side == "buy":
-                # 买单成交（开多仓）后，在对称网格挂卖单（平多仓）
-                # 对称网格 = grid_count - 1 - current_grid
-                symmetric_grid_idx = self.config.grid_count - 1 - filled_order.grid_idx
-                if symmetric_grid_idx < self.config.grid_count and symmetric_grid_idx >= 0:
-                    next_price = self.config.lower_price + symmetric_grid_idx * self.grid_gap
+                # 买单成交（开多仓）后，在上一网格（grid_idx + 1）挂卖单快速平多
+                # 这样可以在价格上涨一个网格时立即平仓获利
+                if filled_order.grid_idx + 1 < self.config.grid_count:
+                    next_grid_idx = filled_order.grid_idx + 1
+                    next_price = self.config.lower_price + next_grid_idx * self.grid_gap
                     quantity = filled_order.quantity
-                    counter_order = GridOrder(symmetric_grid_idx, next_price, "sell", quantity)
+                    counter_order = GridOrder(next_grid_idx, next_price, "sell", quantity)
                     self._add_order(counter_order)
             elif filled_order.side == "sell":
-                # 卖单成交（开空仓）后，在对称网格挂买单（平空仓）
-                symmetric_grid_idx = self.config.grid_count - 1 - filled_order.grid_idx
-                if symmetric_grid_idx < self.config.grid_count and symmetric_grid_idx >= 0:
-                    next_price = self.config.lower_price + symmetric_grid_idx * self.grid_gap
+                # 卖单成交（开空仓）后，在下一网格（grid_idx - 1）挂买单快速平空
+                # 这样可以在价格下跌一个网格时立即平仓获利
+                if filled_order.grid_idx - 1 >= 0:
+                    next_grid_idx = filled_order.grid_idx - 1
+                    next_price = self.config.lower_price + next_grid_idx * self.grid_gap
                     quantity = filled_order.quantity
-                    counter_order = GridOrder(symmetric_grid_idx, next_price, "buy", quantity)
+                    counter_order = GridOrder(next_grid_idx, next_price, "buy", quantity)
                     self._add_order(counter_order)
     
     def remove_order(self, grid_idx: int, order_id: Optional[str] = None) -> Optional[GridOrder]:
