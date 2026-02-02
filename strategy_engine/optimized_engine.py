@@ -92,6 +92,8 @@ class OptimizedGridStrategyEngine:
         # Position tracking
         self.total_long_position = 0.0
         self.total_short_position = 0.0
+        self.long_entry_price = 0.0  # Average entry price for long positions
+        self.short_entry_price = 0.0  # Average entry price for short positions
         self.position_entry_prices: Dict[str, float] = {}  # Track entry prices
         
         # Capital and fees
@@ -240,40 +242,45 @@ class OptimizedGridStrategyEngine:
         """Place initial orders for long grid mode.
         
         Long grid: Buy at lower prices, sell at higher prices.
+        Only place orders below start price to avoid immediate execution.
         """
         for i in range(self.config.grid_count):
             grid = self.grid_levels[i]
             
-            if i <= start_level:
-                # Below or at start price: place buy orders
+            if i < start_level:
+                # Below start price: place buy orders
                 order = GridOrder(i, grid.price, "buy", quantity, "initial", grid.price)
                 grid.pending_buy_orders.append(order)
-            else:
+            elif i > start_level:
                 # Above start price: place sell orders
                 order = GridOrder(i, grid.price, "sell", quantity, "initial", grid.price)
                 grid.pending_sell_orders.append(order)
+            # At start price (i == start_level): don't place any order to avoid immediate execution
     
     def _place_short_initial_orders(self, start_level: int, quantity: float) -> None:
         """Place initial orders for short grid mode.
         
         Short grid: Sell at higher prices, buy at lower prices.
+        Only place orders above start price to avoid immediate execution.
         """
         for i in range(self.config.grid_count):
             grid = self.grid_levels[i]
             
-            if i >= start_level:
-                # Above or at start price: place sell orders
+            if i > start_level:
+                # Above start price: place sell orders
                 order = GridOrder(i, grid.price, "sell", quantity, "initial", grid.price)
                 grid.pending_sell_orders.append(order)
-            else:
+            elif i < start_level:
                 # Below start price: place buy orders
                 order = GridOrder(i, grid.price, "buy", quantity, "initial", grid.price)
                 grid.pending_buy_orders.append(order)
+            # At start price (i == start_level): don't place any order to avoid immediate execution
     
     def _place_neutral_initial_orders(self, start_level: int, quantity: float) -> None:
         """Place initial orders for neutral grid mode.
         
         Neutral grid: Balanced buy and sell orders around start price.
+        Don't place orders at start price to avoid immediate execution.
         """
         for i in range(self.config.grid_count):
             grid = self.grid_levels[i]
@@ -286,12 +293,7 @@ class OptimizedGridStrategyEngine:
                 # Above start price: place sell orders
                 order = GridOrder(i, grid.price, "sell", quantity * 0.5, "initial", grid.price)
                 grid.pending_sell_orders.append(order)
-            else:
-                # At start price: place both buy and sell orders
-                buy_order = GridOrder(i, grid.price, "buy", quantity * 0.25, "initial", grid.price)
-                sell_order = GridOrder(i, grid.price, "sell", quantity * 0.25, "initial", grid.price)
-                grid.pending_buy_orders.append(buy_order)
-                grid.pending_sell_orders.append(sell_order)
+            # At start price (i == start_level): don't place any order to avoid immediate execution
     
     def execute(self, klines: List[KlineData]) -> StrategyResult:
         """Execute strategy on K-line data.
@@ -407,34 +409,44 @@ class OptimizedGridStrategyEngine:
             if self.total_short_position > 0:
                 # Close short position
                 close_qty = min(order.quantity, self.total_short_position)
-                pnl = close_qty * (order.entry_price - fill_price) * self.config.leverage
+                pnl = close_qty * (self.short_entry_price - fill_price) * self.config.leverage
                 self.total_short_position -= close_qty
                 self.grid_profit += max(0, pnl)
                 
                 # Remaining quantity becomes long position
                 remaining_qty = order.quantity - close_qty
                 if remaining_qty > 0:
+                    # Update long position and entry price
+                    total_cost = self.total_long_position * self.long_entry_price + remaining_qty * fill_price
                     self.total_long_position += remaining_qty
+                    self.long_entry_price = total_cost / self.total_long_position if self.total_long_position > 0 else fill_price
             else:
                 # Open long position
+                total_cost = self.total_long_position * self.long_entry_price + order.quantity * fill_price
                 self.total_long_position += order.quantity
+                self.long_entry_price = total_cost / self.total_long_position if self.total_long_position > 0 else fill_price
         
         else:  # sell order
             # Sell order: increase short position or close long position
             if self.total_long_position > 0:
                 # Close long position
                 close_qty = min(order.quantity, self.total_long_position)
-                pnl = close_qty * (fill_price - order.entry_price) * self.config.leverage
+                pnl = close_qty * (fill_price - self.long_entry_price) * self.config.leverage
                 self.total_long_position -= close_qty
                 self.grid_profit += max(0, pnl)
                 
                 # Remaining quantity becomes short position
                 remaining_qty = order.quantity - close_qty
                 if remaining_qty > 0:
+                    # Update short position and entry price
+                    total_cost = self.total_short_position * self.short_entry_price + remaining_qty * fill_price
                     self.total_short_position += remaining_qty
+                    self.short_entry_price = total_cost / self.total_short_position if self.total_short_position > 0 else fill_price
             else:
                 # Open short position
+                total_cost = self.total_short_position * self.short_entry_price + order.quantity * fill_price
                 self.total_short_position += order.quantity
+                self.short_entry_price = total_cost / self.total_short_position if self.total_short_position > 0 else fill_price
         
         # Record trade
         trade = TradeRecord(
@@ -559,14 +571,12 @@ class OptimizedGridStrategyEngine:
         unrealized_pnl = 0.0
         
         # Calculate unrealized PnL for long positions
-        if self.total_long_position > 0:
-            avg_entry_price = self.config.lower_price  # Simplified
-            unrealized_pnl += self.total_long_position * (current_price - avg_entry_price)
+        if self.total_long_position > 0 and self.long_entry_price > 0:
+            unrealized_pnl += self.total_long_position * (current_price - self.long_entry_price)
         
         # Calculate unrealized PnL for short positions
-        if self.total_short_position > 0:
-            avg_entry_price = self.config.upper_price  # Simplified
-            unrealized_pnl += self.total_short_position * (avg_entry_price - current_price)
+        if self.total_short_position > 0 and self.short_entry_price > 0:
+            unrealized_pnl += self.total_short_position * (self.short_entry_price - current_price)
         
         return self.capital + unrealized_pnl
     
@@ -601,10 +611,10 @@ class OptimizedGridStrategyEngine:
         # Calculate unrealized PnL
         unrealized_pnl = 0.0
         if self.last_price > 0:
-            if self.total_long_position > 0:
-                unrealized_pnl += self.total_long_position * (self.last_price - self.config.lower_price)
-            if self.total_short_position > 0:
-                unrealized_pnl += self.total_short_position * (self.config.upper_price - self.last_price)
+            if self.total_long_position > 0 and self.long_entry_price > 0:
+                unrealized_pnl += self.total_long_position * (self.last_price - self.long_entry_price)
+            if self.total_short_position > 0 and self.short_entry_price > 0:
+                unrealized_pnl += self.total_short_position * (self.short_entry_price - self.last_price)
         
         return StrategyResult(
             symbol=self.config.symbol,
