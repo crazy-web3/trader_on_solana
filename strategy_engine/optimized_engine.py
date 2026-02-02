@@ -318,8 +318,14 @@ class OptimizedGridStrategyEngine:
             self.last_price = start_price
             self._place_initial_orders(start_price)
             
-            # Process each K-line
-            for kline in klines:
+            # Record initial equity (should equal initial capital since no positions yet)
+            initial_equity = self._calculate_current_equity(start_price)
+            self.equity_curve.append(initial_equity)
+            self.timestamps.append(klines[0].timestamp)
+            
+            # Process K-lines starting from the second one
+            # (First K-line is used only for initialization)
+            for kline in klines[1:]:
                 self._process_kline(kline)
             
             # Calculate final result
