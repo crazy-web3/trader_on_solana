@@ -241,90 +241,61 @@ class OptimizedGridStrategyEngine:
     def _place_long_initial_orders(self, start_level: int, quantity: float) -> None:
         """Place initial orders for long grid mode.
         
-        Long grid: Buy at lower prices, sell at higher prices.
-        Directly open long positions at and below start price, place sell orders above.
+        Long grid: Only place buy orders BELOW current price.
+        - Buy orders are placed at prices lower than current price
+        - When a buy order is filled, a sell order is placed above it
+        - This ensures we only open long positions when price falls
         """
-        total_cost = 0.0
-        total_qty = 0.0
-        
         for i in range(self.config.grid_count):
             grid = self.grid_levels[i]
             
-            if i <= start_level:
-                # At or below start price: directly open long position
-                self.total_long_position += quantity
-                total_cost += quantity * grid.price
-                total_qty += quantity
-                
-                # Place sell order at next level to close long
-                if i < self.config.grid_count - 1:
-                    next_grid = self.grid_levels[i + 1]
-                    order = GridOrder(i + 1, next_grid.price, "sell", quantity, "initial", next_grid.price)
-                    next_grid.pending_sell_orders.append(order)
-            else:
-                # Above start price: place buy orders
+            # Only place buy orders below current price (start_level)
+            if i < start_level:
+                # Below current price: place buy orders to open long positions
                 order = GridOrder(i, grid.price, "buy", quantity, "initial", grid.price)
                 grid.pending_buy_orders.append(order)
-        
-        # Update average entry price
-        if total_qty > 0:
-            self.long_entry_price = total_cost / total_qty
+            # Above current price: don't place any orders initially
+            # Sell orders will be placed when buy orders are filled
     
     def _place_short_initial_orders(self, start_level: int, quantity: float) -> None:
         """Place initial orders for short grid mode.
         
-        Short grid: Sell at higher prices, buy at lower prices.
-        Directly open short positions at and above start price, place buy orders below.
+        Short grid: Only place sell orders ABOVE current price.
+        - Sell orders are placed at prices higher than current price
+        - When a sell order is filled, a buy order is placed below it
+        - This ensures we only open short positions when price rises
         """
-        total_cost = 0.0
-        total_qty = 0.0
-        
         for i in range(self.config.grid_count):
             grid = self.grid_levels[i]
             
-            if i >= start_level:
-                # At or above start price: directly open short position
-                self.total_short_position += quantity
-                total_cost += quantity * grid.price
-                total_qty += quantity
-                
-                # Place buy order at previous level to close short
-                if i > 0:
-                    prev_grid = self.grid_levels[i - 1]
-                    order = GridOrder(i - 1, prev_grid.price, "buy", quantity, "initial", prev_grid.price)
-                    prev_grid.pending_buy_orders.append(order)
-            else:
-                # Below start price: place sell orders
+            # Only place sell orders above current price (start_level)
+            if i > start_level:
+                # Above current price: place sell orders to open short positions
                 order = GridOrder(i, grid.price, "sell", quantity, "initial", grid.price)
                 grid.pending_sell_orders.append(order)
-        
-        # Update average entry price
-        if total_qty > 0:
-            self.short_entry_price = total_cost / total_qty
+            # Below current price: don't place any orders initially
+            # Buy orders will be placed when sell orders are filled
     
     def _place_neutral_initial_orders(self, start_level: int, quantity: float) -> None:
         """Place initial orders for neutral grid mode.
         
-        Neutral grid: Balanced buy and sell orders around start price.
-        Place buy orders below, sell orders above, balanced at start price.
+        Neutral grid: Place buy orders below and sell orders above current price.
+        - Buy orders below current price to open long positions
+        - Sell orders above current price to open short positions
+        - No orders at current price to avoid immediate execution
         """
         for i in range(self.config.grid_count):
             grid = self.grid_levels[i]
             
             if i < start_level:
-                # Below start price: place buy orders
-                order = GridOrder(i, grid.price, "buy", quantity * 0.5, "initial", grid.price)
+                # Below current price: place buy orders
+                order = GridOrder(i, grid.price, "buy", quantity, "initial", grid.price)
                 grid.pending_buy_orders.append(order)
             elif i > start_level:
-                # Above start price: place sell orders
-                order = GridOrder(i, grid.price, "sell", quantity * 0.5, "initial", grid.price)
+                # Above current price: place sell orders
+                order = GridOrder(i, grid.price, "sell", quantity, "initial", grid.price)
                 grid.pending_sell_orders.append(order)
-            else:
-                # At start price: place both buy and sell orders with smaller quantities
-                buy_order = GridOrder(i, grid.price, "buy", quantity * 0.25, "initial", grid.price)
-                sell_order = GridOrder(i, grid.price, "sell", quantity * 0.25, "initial", grid.price)
-                grid.pending_buy_orders.append(buy_order)
-                grid.pending_sell_orders.append(sell_order)
+            # At current price (i == start_level): don't place any orders
     
     def execute(self, klines: List[KlineData]) -> StrategyResult:
         """Execute strategy on K-line data.
