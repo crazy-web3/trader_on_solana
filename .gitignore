@@ -1,45 +1,50 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# 合约网格交易系统 - Git忽略文件配置
+# 包含前端、后端、测试、开发工具等相关的忽略规则
 
-# dependencies
+# ==================== Node.js / 前端相关 ====================
+# 依赖包
+node_modules/
+frontend/node_modules/
 /node_modules
 /.pnp
 .pnp.js
 
-# testing
-/coverage
-
-# next.js
+# 构建输出
+/build
+/dist
 /.next/
 /out/
+frontend/build/
+frontend/dist/
 
-# production
-/build
+# 测试覆盖率
+/coverage
+frontend/coverage/
 
-# misc
-.DS_Store
-*.pem
+# 包管理器锁文件（可选择性忽略）
+# package-lock.json
+# yarn.lock
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
+# Next.js 相关
 *.tsbuildinfo
 next-env.d.ts
 
-# Python
+# Vercel 部署
+.vercel
+
+# ==================== Python / 后端相关 ====================
+# 字节码文件
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# C 扩展
 *.so
+
+# 分发 / 打包
 .Python
 build/
 develop-eggs/
@@ -60,38 +65,223 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# 虚拟环境
 venv/
 ENV/
 env/
-.venv
+.venv/
+.env/
+venv*/
+env*/
 
-# IDE
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# ==================== 测试相关 ====================
+# pytest
+.pytest_cache/
+.cache
+pytest.ini
+
+# Hypothesis
+.hypothesis/
+
+# 测试覆盖率
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.nox/
+.tox/
+htmlcov/
+
+# 单元测试 / 集成测试
+.testmondata
+
+# ==================== 环境变量和配置 ====================
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+*.env
+
+# 配置文件（包含敏感信息）
+config.json
+config.local.json
+settings.json
+settings.local.json
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# ==================== 日志文件 ====================
+# 应用日志
+*.log
+logs/
+log/
+backend.log
+frontend.log
+app.log
+error.log
+access.log
+debug.log
+
+# npm/yarn 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ==================== IDE 和编辑器 ====================
+# Visual Studio Code
 .vscode/
+*.code-workspace
+
+# JetBrains IDEs
 .idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
 *.swp
 *.swo
 *~
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ==================== 操作系统相关 ====================
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
-# Testing
-.pytest_cache/
-.hypothesis/
-*.cover
-.coverage
-
-# Logs
-*.log
-logs/
-backend.log
-frontend.log
-
-# OS
-.DS_Store
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
-# Project specific
-node_modules/
-frontend/node_modules/
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ==================== 项目特定文件 ====================
+# AI 助手配置
 .claude/
 .kiro/
+
+# 临时文件和缓存
+tmp/
+temp/
+.tmp/
+.temp/
+cache/
+.cache/
+
+# 备份文件
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 证书和密钥文件
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# 数据文件（根据需要调整）
+data/
+*.csv
+*.json.bak
+*.xlsx
+*.xls
+
+# 文档生成
+docs/_build/
+site/
+
+# 性能分析
+*.prof
+
+# 其他临时文件
+.sass-cache/
+*.pid
+*.seed
+*.pid.lock
+.nyc_output
+
+# 测试文件（如果不需要版本控制）
+test_api.py
+test_*.py
+*_test.py
