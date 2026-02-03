@@ -1,351 +1,145 @@
-# trader_on_solana
+# 合约网格交易系统
 
-## 🚀 Quick Start
+一个基于Python Flask和Vue.js的网格交易策略回测系统，支持做多、做空、中性三种网格交易策略的历史数据回测和参数优化。
 
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- Virtual environment (venv)
-
-### Backend Setup & Run
-```bash
-# Activate virtual environment (macOS/Linux)
-source venv/bin/activate
-
-# Or on Windows
-# venv\Scripts\activate
-
-# Install dependencies (if needed)
-pip install -r requirements.txt
-
-# Configure wallet whitelist (optional)
-python3 manage_whitelist.py add <wallet_address> --nickname "User Name" --role user
-
-# Start backend server
-python3 app.py
-```
-Backend runs on: **http://localhost:5001**
-
-### Frontend Setup & Run
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies (if needed)
-npm install
-
-# Start frontend development server
-npm run dev
-```
-Frontend runs on: **http://localhost:3000**
-
-### Quick Start (Development)
-For development, you can use the provided scripts:
-
-**macOS/Linux:**
-```bash
-# Make scripts executable
-chmod +x run.sh
-
-# Start both backend and frontend
-./run.sh
-```
-
-**Windows:**
-```bash
-# Start both backend and frontend
-run.bat
-```
-
-### Docker Deployment
-```bash
-# Build and start all services
-docker-compose up --build
-
-# Or run in background
-docker-compose up -d --build
-```
-- Frontend: http://localhost:3000
-- Backend: http://localhost:5001
-
-### Access the Application
-- **Frontend UI**: http://localhost:3000
-- **Backend API**: http://localhost:5001
-- **API Documentation**: Check endpoints in `app.py`
-- **Wallet Authentication**: See `docs/WALLET_AUTH.md` for setup guide
-
-### Wallet Setup
-1. Install a Solana wallet (Phantom or Solflare)
-2. Add your wallet address to the whitelist using `manage_whitelist.py`
-3. Connect your wallet on the frontend to access trading features
-
-### Available Features
-- 📊 **Market Data**: Real-time K-line data from Binance API with interactive charts
-- 📈 **Strategy Backtest**: Quick backtesting with configurable parameters, leverage support, and grid profit tracking
-- 🔍 **Full Backtest**: Historical backtesting up to 3 years with strategy comparison (Long/Short/Neutral)
-- ⚙️ **Parameter Optimization**: Grid Search for optimal parameters (requires wallet connection)
-- 🔐 **Wallet Authentication**: Solana wallet login with whitelist control
-- 💰 **Perpetual Contracts**: Support for leveraged trading (1x-100x) with funding rates
-- 📊 **Grid Analytics**: Track grid profit accumulation and unrealized PnL from unpaired positions
-- 🎨 **Dark/Light Theme**: Toggle between dark and light themes with persistent settings (🌙 button in top-right)
-- 📱 **Responsive Design**: Mobile-friendly interface with adaptive layouts
-
----
-
-## 📁 Project Structure
+## 🏗️ 项目结构
 
 ```
 trader_on_solana/
-├── 📱 frontend/              # Vue.js frontend application
-├── 🧠 strategy_engine/       # Grid trading strategy implementation
-├── 🔄 backtest_engine/       # Backtesting engine
-├── 📊 market_data_layer/     # Market data fetching and validation
-├── 🔐 wallet_auth/           # Solana wallet authentication
-├── 🛠️ utils/                # Utility functions
-├── 📚 docs/                 # Documentation files
-├── 🧪 tests/                # Unit tests
-├── 📦 archive/              # Archived development files
-│   ├── test_files/          # Python test scripts
-│   ├── html_demos/          # HTML demo pages
-│   ├── scripts/             # Utility scripts
-│   ├── config/              # Configuration files
-│   └── pic/                 # Demonstration screenshots
-├── 🐍 app.py                # Main Flask backend server
-├── 📋 requirements.txt      # Python dependencies
-└── 📖 README.md            # This file
+├── backend/                # 后端服务 (Python Flask)
+│   ├── api/               # API路由模块
+│   ├── backtest_engine/   # 回测引擎
+│   ├── strategy_engine/   # 策略引擎
+│   ├── market_data_layer/ # 市场数据层
+│   ├── wallet_auth/       # 钱包认证
+│   ├── utils/            # 工具函数
+│   ├── tests/            # 测试文件
+│   ├── app.py            # 主应用入口
+│   └── requirements.txt  # Python依赖
+├── frontend/              # 前端应用 (Vue.js)
+│   ├── src/              # 源代码
+│   ├── public/           # 静态资源
+│   ├── package.json      # 项目配置
+│   └── vite.config.js    # 构建配置
+├── docs_zh/              # 中文文档
+│   ├── 合约网格交易说明文档.md
+│   ├── API_ENDPOINTS.md
+│   ├── QUICKSTART_OPTIMIZED.md
+│   └── ...
+├── docs/                 # 英文文档 (原有)
+├── archive/              # 归档文件
+└── README.md            # 项目说明 (本文件)
 ```
 
-## **一、项目背景**
+## 🚀 快速启动
 
-**赛道**：交易与策略机器人（Trading & Strategy Bots）
-
-**核心理念**：
-
-- 真实行情数据 + 可解释策略
-- 参数遍历回测（而非“拍脑袋”参数）
-- MVP 优先，先跑通再打磨
-
----
-
-## **二、整体方案概述**
-
-### **1. 支持资产**
-
-- BTC
-- ETH
-- SOL
-
-### **2. 行情维度**
-
-- K 线周期：15min / 1h / 4h / 1D
-- 数据来源：
-    - Jupiter / Solana 生态
-    - TradingView（对齐验证）
-    - OpenAPI 行情接口（自建封装）
-
-### **3. 策略类型**
-
-- 永续合约网格策略（方向可选）
-    - 做多网格（杠杆1-100倍）
-    - 做空网格（杠杆1-100倍）
-    - 中性网格（双向交易）
-
-### **4. 成本假设**
-
-- 单边手续费：0.05%
-- 资金费率：默认0%（可配置）
-- 资金费率周期：8小时（可配置1-24小时）
-- 回测中显式计入手续费、资金费用与滑点（MVP 简化为固定值）
-
----
-
-## **三、功能拆解（MVP 范围）**
-
-### **1. 行情模块（Data Layer）**
-
-**功能**：
-
-- 拉取历史 K 线
-- 支持多周期、多币种
-
-**输出**：
-
+### 1. 启动后端服务
+```bash
+cd backend
+pip install -r requirements.txt
+python app.py
 ```
-{
-  "timestamp": 1234567890,
-  "open": 0,
-  "high": 0,
-  "low": 0,
-  "close": 0,
-  "volume": 0
-}
+后端服务将运行在: http://localhost:5001
+
+### 2. 启动前端应用
+```bash
+cd frontend
+npm install
+npm run dev
+```
+前端应用将运行在: http://localhost:3001
+
+### 3. 访问服务
+- **前端界面**: http://localhost:3001
+- **后端API**: http://localhost:5001
+- **API文档**: http://localhost:5001/docs/
+- **Swagger JSON**: http://localhost:5001/swagger.json
+
+## 📋 主要功能
+
+### 🤖 网格交易策略
+- **做多网格**: 适合上涨趋势市场
+- **做空网格**: 适合下跌趋势市场  
+- **中性网格**: 适合震荡市场
+
+### 📊 回测分析
+- 历史数据回测
+- 多策略对比分析
+- 参数优化搜索
+- 详细性能指标
+
+### 🔐 钱包认证
+- Web3钱包连接
+- 签名验证
+- 白名单权限控制
+
+### 📈 数据支持
+- 币安K线数据
+- 多时间周期
+- 智能缓存机制
+
+## 🛠️ 技术栈
+
+### 后端
+- **框架**: Python Flask
+- **数据**: 币安API
+- **认证**: Web3钱包签名
+- **文档**: Swagger/OpenAPI
+
+### 前端  
+- **框架**: Vue.js 3
+- **构建**: Vite
+- **图表**: Chart.js
+- **样式**: CSS3
+
+## 📚 文档
+
+详细文档请查看 [docs_zh/](./docs_zh/) 目录：
+
+- [快速启动指南](./docs_zh/QUICKSTART_OPTIMIZED.md)
+- [API接口文档](./docs_zh/API_ENDPOINTS.md)
+- [网格交易策略说明](./docs_zh/合约网格交易说明文档.md)
+- [Swagger集成说明](./docs_zh/SWAGGER_INTEGRATION_SUMMARY.md)
+
+## 🔧 开发
+
+### 后端开发
+```bash
+cd backend
+# 安装依赖
+pip install -r requirements.txt
+# 运行测试
+python -m pytest tests/
+# 启动服务
+python app.py
 ```
 
----
+### 前端开发
+```bash
+cd frontend
+# 安装依赖
+npm install
+# 开发模式
+npm run dev
+# 构建生产版本
+npm run build
+```
 
-### **2. 策略引擎（Strategy Engine）**
+## 📊 API接口
 
-**输入参数**：
+系统提供完整的RESTful API接口：
 
-- 价格区间（upper / lower）
-- 网格数量（N）
-- 方向（long / short / neutral）
-- 初始资金
+- **认证接口**: 钱包登录、令牌验证
+- **市场数据**: K线数据、交易对查询
+- **策略回测**: 单策略回测、参数计算
+- **回测引擎**: 综合回测、参数优化
 
-**核心逻辑**：
+详细API文档: http://localhost:5001/docs/
 
-- 自动生成网格价位
-- 逐根 K 线模拟成交
-- 记录：
-    - 成交次数
-    - 盈亏曲线
-    - 最大回撤
+## 🤝 贡献
 
----
+欢迎提交Issue和Pull Request来改进项目。
 
-### **3. 回测模块（Backtest Engine）**
+## 📄 许可证
 
-**回测范围**：
-
-- 最近 3 年历史行情
-
-**模式**：
-
-- 单参数回测
-- 参数遍历（Grid Search）
-
-**输出指标**：
-
-- 总收益率
-- 年化收益
-- 最大回撤
-- 手续费占比
-
----
-
-### **4. 前端界面（Frontend MVP）**
-
-**功能**：
-
-- 网格参数配置面板
-- K 线图展示
-- 回测结果可视化
-
-**核心组件**：
-
-- TradingView Chart
-- 参数输入（区间 / 网格数 / 方向）
-- 结果表格 + 简单曲线
-
----
-
-## **四、技术选型建议**
-
-| **模块** | **技术建议** |
-| --- | --- |
-| 行情 API | Jupiter API + 自建封装 |
-| 回测引擎 | Node.js / Python（偏快速验证） |
-| 前端 | React + TradingView Chart |
-| 区块链交互 | Solana Web3.js（预留） |
-| 部署 | tryNoah.ai / Vercel |
-
----
-
-## **五、团队分工建议**
-
-### **角色 1：行情 & 回测工程师**
-
-- 行情 API 封装
-- K 线数据清洗
-- 回测核心逻辑实现
-
-### **角色 2：策略 & 参数研究**
-
-- 网格策略建模
-- 参数区间设计
-- 回测结果分析
-
-### **角色 3：前端 & 产品**
-
-- 网格参数 UI
-- 回测结果可视化
-- Demo 体验优化
-
----
-
-## **六、开发节奏（黑客松节奏）**
-
-### **Day 1**
-
-- 明确策略公式
-- 跑通历史 K 线拉取
-
-### **Day 2**
-
-- 完成基础网格回测
-- 输出第一版结果
-
-### **Day 3**
-
-- 接入前端
-- Demo 可操作
-
-### **Day 4（加分项）**
-
-- 参数遍历
-- 不同币种横向对比
-
----
-
-## **七、MVP 交付物**
-
-### ✅ 功能演示
-
-我们已经成功交付了一个完整的网格交易机器人 MVP，包含以下核心功能：
-
-#### 1. 📊 市场数据展示
-![市场数据页面](archive/pic/image%20copy%201.png)
-*实时 K 线图表展示，支持多币种、多时间周期，默认 ETH/USDT 4小时线*
-
-#### 2. 📈 策略回测功能
-![策略回测页面](archive/pic/image%20copy%200.png)
-*单策略回测界面，支持做多/做空/中性网格，包含网格收益和未配对收益统计*
-
-#### 3. 🔍 完整回测对比
-![完整回测页面](archive/pic/image%20copy%202.png)
-*三种策略同时回测对比，直观展示不同策略在相同市场条件下的表现*
-
-#### 4. ⚙️ 参数优化功能
-![参数优化页面](archive/pic/image%20copy%203.png)
-*网格搜索参数优化，通过遍历参数组合找到最优策略配置*
-
-### ✅ 核心特性
-
-- **可运行的网格回测 Demo**: 完整的前后端系统，支持实时回测
-- **参数可配置**: 支持价格区间、网格数量、杠杆倍数、资金费率等全面配置
-- **清晰的策略说明文档**: 详细的文档说明和代码注释
-- **学习导向的展示**: 直观的图表和数据展示，便于理解网格策略原理
-
-### ✅ 技术实现
-
-- **前端**: Vue.js + Chart.js，响应式设计，支持深色/浅色主题
-- **后端**: Python Flask，模块化架构，RESTful API
-- **数据源**: Binance API，实时市场数据
-- **策略引擎**: 自研网格交易算法，支持永续合约
-- **回测引擎**: 高性能历史数据回测，支持多策略对比
-
----
-
-## **八、后续可扩展方向（非本次必做）**
-
-- 实盘交易（Solana 合约）
-- 动态区间 / ATR 网格
-- 多策略对比
-- 链上数据因子（Funding / OI）
-
----
-
-**项目定位总结**：
-
-> 用真实数据，把“网格策略到底怎么赚/怎么亏”讲清楚。
->
+MIT License
