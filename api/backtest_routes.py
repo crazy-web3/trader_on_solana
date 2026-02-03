@@ -25,9 +25,31 @@ from market_data_layer.exceptions import (
 )
 from utils.price_utils import calculate_adaptive_price_range, calculate_grid_count, get_optimal_grid_spacing
 
-# 创建蓝图
-backtest_bp = Blueprint('backtest', __name__, url_prefix='/api/backtest')
 logger = logging.getLogger(__name__)
+
+
+def convert_symbol_format(symbol):
+    """
+    转换符号格式：ETHUSDT -> ETH/USDT
+    
+    Args:
+        symbol: 原始符号格式
+        
+    Returns:
+        str: 转换后的符号格式
+    """
+    if '/' not in symbol:
+        # 常见的转换规则
+        if symbol.endswith('USDT'):
+            base = symbol[:-4]  # 移除USDT
+            return f"{base}/USDT"
+        elif symbol.endswith('BTC'):
+            base = symbol[:-3]  # 移除BTC
+            return f"{base}/BTC"
+        else:
+            return symbol
+    else:
+        return symbol
 
 
 def init_backtest_routes(adapter, validator, require_auth):
@@ -39,71 +61,17 @@ def init_backtest_routes(adapter, validator, require_auth):
         validator: 数据验证器
         require_auth: 认证装饰器函数
     """
+    
+    # 创建回测引擎蓝图
+    backtest_bp = Blueprint('backtest', __name__, url_prefix='/api/backtest')
 
     @backtest_bp.route("/run", methods=["POST"])
-    def run_backtest():
+    def comprehensive_backtest():
         """
         运行综合回测分析
         
         同时对做多、做空、中性三种策略进行回测
         提供策略间的对比分析，帮助用户选择最优策略
-        
-        请求体（与单策略回测相同，但不需要mode参数）:
-        {
-            "symbol": "ETHUSDT",
-            "lower_price": 2400,   # 可选，自动计算
-            "upper_price": 2800,   # 可选，自动计算
-            "grid_count": 10,      # 可选，自动计算
-            "initial_capital": 10000,
-            "days": 30,
-            "leverage": 1.0,       # 杠杆倍数（可选，默认1倍）
-            "funding_rate": 0.0,   # 资金费率（可选，默认0）
-            "funding_interval": 8, # 资金费率间隔（可选，默认8小时）
-            "entry_price": 2600,   # 入场价格（可选）
-            "auto_calculate_range": true
-        }
-        
-        返回:
-        {
-            "symbol": "ETHUSDT",
-            "backtest_period": {
-                "days": 30,
-                "data_points": 720,
-                "start_time": 1706889300000,
-                "end_time": 1706975700000
-            },
-            "parameters": {
-                "lower_price": 2400.0,
-                "upper_price": 2800.0,
-                "grid_count": 10,
-                "grid_spacing": 44.44,
-                "initial_capital": 10000.0,
-                "leverage": 1.0,
-                "funding_rate": 0.0,
-                "funding_interval": 8,
-                "entry_price": 2600.0,
-                "auto_calculated": true,
-                "price_range": 400.0
-            },
-            "strategies": {
-                "long": {策略回测结果},
-                "short": {策略回测结果},
-                "neutral": {策略回测结果}
-            },
-            "comparison": {
-                "best_strategy": "long",
-                "worst_strategy": "short",
-                "returns_comparison": {
-                    "long": 0.15,
-                    "short": -0.05,
-                    "neutral": 0.08
-                },
-                "final_capital_comparison": {...},
-                "total_trades_comparison": {...},
-                "win_rate_comparison": {...},
-                "max_drawdown_comparison": {...}
-            }
-        }
         """
         try:
             data = request.get_json()
@@ -146,7 +114,8 @@ def init_backtest_routes(adapter, validator, require_auth):
             end_time = int(datetime.now().timestamp() * 1000)
             start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
             
-            klines = adapter.fetch_kline_data(symbol, "1h", start_time, end_time)
+            symbol_formatted = convert_symbol_format(symbol)
+            klines = adapter.fetch_kline_data(symbol_formatted, "1h", start_time, end_time)
             
             if not klines:
                 return jsonify({"error": "无法获取K线数据"}), 404
@@ -311,49 +280,6 @@ def init_backtest_routes(adapter, validator, require_auth):
         
         对策略参数进行网格搜索，找到最优的参数组合
         支持多个参数的同时优化，如网格数量、价格区间等
-        
-        请求体:
-        {
-            "symbol": "BTCUSDT",
-            "mode": "long",
-            "lower_price": 40000,
-            "upper_price": 60000,
-            "grid_count": 10,
-            "initial_capital": 10000,
-            "start_date": "2025-01-28",
-            "end_date": "2026-01-28",
-            "parameter_ranges": {
-                "grid_count": [5, 10, 15, 20],        # 要测试的网格数量
-                "lower_price": [38000, 40000, 42000], # 要测试的下边界价格
-                "upper_price": [58000, 60000, 62000]  # 要测试的上边界价格
-            },
-            "metric": "total_return"  # 优化目标指标
-        }
-        
-        返回:
-        {
-            "optimization_results": {
-                "best_params": {
-                    "grid_count": 15,
-                    "lower_price": 40000,
-                    "upper_price": 60000
-                },
-                "best_score": 0.25,
-                "total_combinations": 36,
-                "completed_combinations": 36
-            },
-            "parameter_analysis": {
-                "grid_count_impact": {...},
-                "price_range_impact": {...}
-            },
-            "detailed_results": [
-                {
-                    "params": {...},
-                    "score": 0.25,
-                    "backtest_result": {...}
-                }
-            ]
-        }
         """
         try:
             data = request.get_json()

@@ -21,9 +21,31 @@ from market_data_layer.exceptions import (
 )
 from utils.price_utils import calculate_adaptive_price_range, calculate_grid_count, get_optimal_grid_spacing
 
-# 创建蓝图
-strategy_bp = Blueprint('strategy', __name__, url_prefix='/api/strategy')
 logger = logging.getLogger(__name__)
+
+
+def convert_symbol_format(symbol):
+    """
+    转换符号格式：ETHUSDT -> ETH/USDT
+    
+    Args:
+        symbol: 原始符号格式
+        
+    Returns:
+        str: 转换后的符号格式
+    """
+    if '/' not in symbol:
+        # 常见的转换规则
+        if symbol.endswith('USDT'):
+            base = symbol[:-4]  # 移除USDT
+            return f"{base}/USDT"
+        elif symbol.endswith('BTC'):
+            base = symbol[:-3]  # 移除BTC
+            return f"{base}/BTC"
+        else:
+            return symbol
+    else:
+        return symbol
 
 
 def init_strategy_routes(adapter, validator, require_auth):
@@ -35,46 +57,17 @@ def init_strategy_routes(adapter, validator, require_auth):
         validator: 数据验证器
         require_auth: 认证装饰器函数
     """
+    
+    # 创建策略回测蓝图
+    strategy_bp = Blueprint('strategy', __name__, url_prefix='/api/strategy')
 
     @strategy_bp.route("/calculate-from-range", methods=["POST"])
-    def calculate_strategy_from_range():
+    def calculate_from_range():
         """
         根据选定时间区间计算策略参数
         
         用户在前端图表上选择一个时间区间后，系统会分析该区间内的价格波动
         自动计算出适合的网格交易参数，包括价格区间、网格数量等
-        
-        请求体:
-        {
-            "symbol": "ETHUSDT",
-            "start_timestamp": 1706889300000,  # 选中区间开始时间戳（毫秒）
-            "end_timestamp": 1706975700000     # 选中区间结束时间戳（毫秒）
-        }
-        
-        返回:
-        {
-            "selected_range": {
-                "start_timestamp": 1706889300000,
-                "end_timestamp": 1706975700000,
-                "start_time": "2024-02-02T10:15:00",
-                "end_time": "2024-02-03T10:15:00",
-                "data_points": 24
-            },
-            "price_analysis": {
-                "historical_high": 2650.0,
-                "historical_low": 2580.0,
-                "entry_price": 2600.0,
-                "current_price": 2620.0,
-                "price_range": 100.0
-            },
-            "calculated_params": {
-                "lower_price": 2500.0,
-                "upper_price": 2700.0,
-                "grid_count": 10,
-                "grid_spacing": 22.22,
-                "entry_price": 2600.0
-            }
-        }
         """
         try:
             data = request.get_json()
@@ -96,7 +89,8 @@ def init_strategy_routes(adapter, validator, require_auth):
             logger.info(f"根据选定区间计算策略参数: {symbol}, 时间范围: {days}天")
             
             # 获取K线数据（使用4小时周期获得更精确的分析）
-            klines = adapter.fetch_kline_data(symbol, '4h', start_timestamp, end_timestamp)
+            symbol_formatted = convert_symbol_format(symbol)
+            klines = adapter.fetch_kline_data(symbol_formatted, '4h', start_timestamp, end_timestamp)
             
             if not klines:
                 return jsonify({'error': '未找到指定时间区间的数据'}), 404
@@ -198,31 +192,6 @@ def init_strategy_routes(adapter, validator, require_auth):
         
         基于历史数据分析，自动计算适合的网格交易价格区间
         考虑价格波动范围、当前价格位置等因素
-        
-        请求体:
-        {
-            "symbol": "BTCUSDT",
-            "days": 30  # 分析的历史天数
-        }
-        
-        返回:
-        {
-            "symbol": "BTCUSDT",
-            "days": 30,
-            "data_points": 720,
-            "current_price": 42500.0,
-            "historical_high": 45000.0,
-            "historical_low": 40000.0,
-            "earliest_price": 41000.0,
-            "calculated_range": {
-                "lower_price": 40000.0,
-                "upper_price": 45000.0,
-                "grid_count": 10,
-                "grid_spacing": 555.56,
-                "price_range": 5000.0
-            },
-            "grid_levels": [40000.0, 40555.56, 41111.12, ...]
-        }
         """
         try:
             data = request.get_json()
@@ -246,7 +215,8 @@ def init_strategy_routes(adapter, validator, require_auth):
             end_time = int(datetime.now().timestamp() * 1000)
             start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
             
-            klines = adapter.fetch_kline_data(symbol, "1h", start_time, end_time)
+            symbol_formatted = convert_symbol_format(symbol)
+            klines = adapter.fetch_kline_data(symbol_formatted, "1h", start_time, end_time)
             
             if not klines:
                 return jsonify({"error": "无法获取K线数据"}), 404
@@ -314,49 +284,6 @@ def init_strategy_routes(adapter, validator, require_auth):
         对指定的网格交易策略进行历史数据回测
         支持做多、做空、中性三种策略模式
         支持杠杆交易和资金费率计算
-        
-        请求体:
-        {
-            "symbol": "BTCUSDT",
-            "mode": "long",  # long(做多), short(做空), neutral(中性)
-            "lower_price": 48000,  # 网格下边界价格（可选，自动计算）
-            "upper_price": 52000,  # 网格上边界价格（可选，自动计算）
-            "grid_count": 10,      # 网格数量（可选，自动计算）
-            "initial_capital": 10000,  # 初始资金
-            "days": 30,            # 回测天数
-            "leverage": 1.0,       # 杠杆倍数（可选，默认1倍）
-            "funding_rate": 0.0,   # 资金费率（可选，默认0）
-            "funding_interval": 8, # 资金费率收取间隔小时数（可选，默认8小时）
-            "entry_price": 50000,  # 入场价格（可选，默认使用第一个K线收盘价）
-            "auto_calculate_range": true  # 是否自动计算价格区间和网格数量
-        }
-        
-        返回:
-        {
-            "strategy_mode": "long",
-            "symbol": "BTCUSDT",
-            "initial_capital": 10000.0,
-            "final_capital": 11500.0,
-            "total_return": 0.15,
-            "total_return_pct": 15.0,
-            "total_trades": 45,
-            "winning_trades": 30,
-            "losing_trades": 15,
-            "win_rate": 0.67,
-            "max_drawdown": 500.0,
-            "max_drawdown_pct": 5.0,
-            "sharpe_ratio": 1.25,
-            "equity_curve": [...],
-            "trade_history": [...],
-            "calculated_params": {
-                "lower_price": 48000.0,
-                "upper_price": 52000.0,
-                "grid_count": 10,
-                "grid_spacing": 444.44,
-                "auto_calculated": true,
-                "price_range": 4000.0
-            }
-        }
         """
         try:
             data = request.get_json()
@@ -399,7 +326,8 @@ def init_strategy_routes(adapter, validator, require_auth):
             end_time = int(datetime.now().timestamp() * 1000)
             start_time = int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
             
-            klines = adapter.fetch_kline_data(symbol, "1h", start_time, end_time)
+            symbol_formatted = convert_symbol_format(symbol)
+            klines = adapter.fetch_kline_data(symbol_formatted, "1h", start_time, end_time)
             
             if not klines:
                 return jsonify({"error": "无法获取K线数据"}), 404
