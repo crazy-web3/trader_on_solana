@@ -1,0 +1,416 @@
+{
+  "components": {
+    "schemas": {
+      "Error": {
+        "properties": {
+          "error": {
+            "description": "\u9519\u8bef\u4fe1\u606f",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "KlineData": {
+        "properties": {
+          "close": {
+            "description": "\u6536\u76d8\u4ef7",
+            "type": "number"
+          },
+          "high": {
+            "description": "\u6700\u9ad8\u4ef7",
+            "type": "number"
+          },
+          "low": {
+            "description": "\u6700\u4f4e\u4ef7",
+            "type": "number"
+          },
+          "open": {
+            "description": "\u5f00\u76d8\u4ef7",
+            "type": "number"
+          },
+          "timestamp": {
+            "description": "\u65f6\u95f4\u6233\uff08\u6beb\u79d2\uff09",
+            "type": "integer"
+          },
+          "volume": {
+            "description": "\u6210\u4ea4\u91cf",
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "StrategyBacktestRequest": {
+        "properties": {
+          "auto_calculate_range": {
+            "default": true,
+            "type": "boolean"
+          },
+          "days": {
+            "maximum": 365,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "funding_rate": {
+            "default": 0.0,
+            "maximum": 0.01,
+            "minimum": -0.01,
+            "type": "number"
+          },
+          "initial_capital": {
+            "minimum": 100,
+            "type": "number"
+          },
+          "leverage": {
+            "default": 1.0,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "type": "number"
+          },
+          "mode": {
+            "enum": [
+              "long",
+              "short",
+              "neutral"
+            ],
+            "type": "string"
+          },
+          "symbol": {
+            "example": "BTCUSDT",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "mode",
+          "initial_capital",
+          "days"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "\u5728\u8bf7\u6c42\u5934\u4e2d\u6dfb\u52a0JWT\u4ee4\u724c: Bearer <token>",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "contact": {
+      "email": "dev@gridtrading.com",
+      "name": "\u5408\u7ea6\u7f51\u683c\u4ea4\u6613\u7cfb\u7edf\u5f00\u53d1\u56e2\u961f"
+    },
+    "description": "\u63d0\u4f9b\u7f51\u683c\u4ea4\u6613\u7b56\u7565\u56de\u6d4b\u548c\u5206\u6790\u529f\u80fd\u7684RESTful API",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "title": "\u5408\u7ea6\u7f51\u683c\u4ea4\u6613\u7cfb\u7edf API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/auth/challenge": {
+      "post": {
+        "description": "\u4e3a\u6307\u5b9a\u7684\u94b1\u5305\u516c\u94a5\u751f\u6210\u4e00\u4e2a\u9700\u8981\u7b7e\u540d\u7684\u6311\u6218\u6d88\u606f",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "public_key": {
+                    "description": "\u94b1\u5305\u516c\u94a5",
+                    "example": "0x1234567890abcdef...",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "public_key"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "public_key": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "\u6210\u529f\u751f\u6210\u6311\u6218\u6d88\u606f"
+          }
+        },
+        "summary": "\u83b7\u53d6\u8ba4\u8bc1\u6311\u6218\u6d88\u606f"
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "\u9a8c\u8bc1\u7528\u6237\u7684\u94b1\u5305\u7b7e\u540d\u5e76\u751f\u6210JWT\u8ba4\u8bc1\u4ee4\u724c",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "public_key": {
+                    "type": "string"
+                  },
+                  "signature": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "public_key",
+                  "message",
+                  "signature"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "expires_at": {
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "\u767b\u5f55\u6210\u529f"
+          }
+        },
+        "summary": "\u94b1\u5305\u767b\u5f55\u8ba4\u8bc1"
+      }
+    },
+    "/api/health": {
+      "get": {
+        "description": "\u68c0\u67e5API\u670d\u52a1\u5668\u7684\u8fd0\u884c\u72b6\u6001",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "\u670d\u52a1\u6b63\u5e38"
+          }
+        },
+        "summary": "\u5065\u5eb7\u68c0\u67e5"
+      }
+    },
+    "/api/klines": {
+      "get": {
+        "description": "\u6839\u636e\u4ea4\u6613\u5bf9\u3001\u65f6\u95f4\u95f4\u9694\u548c\u5929\u6570\u83b7\u53d6\u5386\u53f2K\u7ebf\u6570\u636e",
+        "parameters": [
+          {
+            "description": "\u4ea4\u6613\u5bf9",
+            "in": "query",
+            "name": "symbol",
+            "required": false,
+            "schema": {
+              "default": "BTCUSDT",
+              "type": "string"
+            }
+          },
+          {
+            "description": "\u65f6\u95f4\u95f4\u9694",
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "1h",
+              "enum": [
+                "15m",
+                "1h",
+                "4h",
+                "1d",
+                "1w"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "\u83b7\u53d6\u5929\u6570",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "maximum": 365,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "count": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/KlineData"
+                      },
+                      "type": "array"
+                    },
+                    "end_time": {
+                      "type": "integer"
+                    },
+                    "interval": {
+                      "type": "string"
+                    },
+                    "start_time": {
+                      "type": "integer"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "\u6210\u529f\u8fd4\u56deK\u7ebf\u6570\u636e"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "\u53c2\u6570\u9519\u8bef"
+          }
+        },
+        "summary": "\u83b7\u53d6K\u7ebf\u6570\u636e"
+      }
+    },
+    "/api/strategy/backtest": {
+      "post": {
+        "description": "\u5bf9\u6307\u5b9a\u7684\u7f51\u683c\u4ea4\u6613\u7b56\u7565\u8fdb\u884c\u5386\u53f2\u6570\u636e\u56de\u6d4b",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StrategyBacktestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "final_capital": {
+                      "type": "number"
+                    },
+                    "initial_capital": {
+                      "type": "number"
+                    },
+                    "strategy_mode": {
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "type": "string"
+                    },
+                    "total_return": {
+                      "type": "number"
+                    },
+                    "total_trades": {
+                      "type": "integer"
+                    },
+                    "win_rate": {
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "\u56de\u6d4b\u6210\u529f"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "\u53c2\u6570\u9519\u8bef"
+          }
+        },
+        "summary": "\u6267\u884c\u7f51\u683c\u4ea4\u6613\u7b56\u7565\u56de\u6d4b"
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "\u5f00\u53d1\u73af\u5883",
+      "url": "http://localhost:5001"
+    }
+  ]
+}

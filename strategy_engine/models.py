@@ -13,6 +13,12 @@ class StrategyMode(str, Enum):
     NEUTRAL = "neutral"  # 中性网格
 
 
+class GridType(str, Enum):
+    """Grid type for price distribution."""
+    ARITHMETIC = "arithmetic"  # 等差网格
+    GEOMETRIC = "geometric"    # 等比网格
+
+
 @dataclass
 class StrategyConfig:
     """Strategy configuration parameters.
@@ -20,6 +26,7 @@ class StrategyConfig:
     Attributes:
         symbol: Trading pair symbol (e.g., "BTC/USDT")
         mode: Strategy mode (long, short, neutral)
+        grid_type: Grid type (arithmetic or geometric)
         lower_price: Lower price boundary
         upper_price: Upper price boundary
         grid_count: Number of grid levels
@@ -29,6 +36,8 @@ class StrategyConfig:
         funding_rate: Funding rate for perpetual contracts (default 0%)
         funding_interval: Funding interval in hours (default 8 hours)
         entry_price: Entry price (earliest price in time series)
+        min_price_tick: Minimum price tick for the trading pair
+        initial_position: Whether to open initial position (for long/short mode)
     """
     symbol: str
     mode: StrategyMode
@@ -36,11 +45,14 @@ class StrategyConfig:
     upper_price: float
     grid_count: int
     initial_capital: float
+    grid_type: GridType = GridType.ARITHMETIC
     fee_rate: float = 0.0005  # 0.05%
     leverage: float = 1.0  # 1x leverage
     funding_rate: float = 0.0  # 0% funding rate
     funding_interval: int = 8  # 8 hours
     entry_price: float = 0.0  # Entry price (earliest price in time series)
+    min_price_tick: float = 0.01  # Minimum price tick
+    initial_position: bool = True  # Open initial position for long/short mode
 
 
 @dataclass
@@ -87,6 +99,8 @@ class StrategyResult:
         max_drawdown_pct: Maximum drawdown percentage
         total_fees: Total trading fees paid
         total_funding_fees: Total funding fees paid
+        grid_profit: 已撮合收益（已配对交易的收益）
+        unrealized_pnl: 未撮合盈亏（未平仓头寸的浮动盈亏）
         trades: List of all trades
         equity_curve: Equity curve over time
         timestamps: Timestamps for equity curve
@@ -104,8 +118,8 @@ class StrategyResult:
     max_drawdown_pct: float
     total_fees: float = 0.0
     total_funding_fees: float = 0.0
-    grid_profit: float = 0.0  # 网格收益累计（已配对交易的收益）
-    unrealized_pnl: float = 0.0  # 未配对收益累计（未平仓头寸的浮动盈亏）
+    grid_profit: float = 0.0  # 已撮合收益（已配对交易的收益）
+    unrealized_pnl: float = 0.0  # 未撮合盈亏（未平仓头寸的浮动盈亏）
     trades: List[TradeRecord] = field(default_factory=list)
     equity_curve: List[float] = field(default_factory=list)
     timestamps: List[int] = field(default_factory=list)
